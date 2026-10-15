@@ -1,4 +1,4 @@
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 const SITES = ['Abdomen L', 'Abdomen R', 'Thigh L', 'Thigh R', 'Arm L', 'Arm R', 'Glute L', 'Glute R', 'Nasal', 'Oral', 'Topical', 'Other'];
 const ADD_NEW = '__add__';
 // Set when running inside the Android APK (Capacitor), not in Chrome.
@@ -385,6 +385,83 @@ $('settingsBtn').addEventListener('click', async () => {
     <p class="subtle">${NATIVE ? 'Installing a newer version keeps your log. Uninstalling the app or clearing its storage deletes it.' : 'Clearing Chrome’s site data or uninstalling the app deletes your log.'} Export and backup is coming in a later update.</p>
     <p style="color:var(--muted);font-size:13px">Version ${esc(version)}</p>`;
   $('setDialog').showModal();
+});
+
+// ---------- import ----------
+// File format: {"format":"peptide-log-import","version":1,"entries":[
+//   {"peptide":"BPC-157","dose":250,"doseUnit":"mcg","volume":0.1,"volumeUnit":"mL",
+//    "takenAt":"2026-09-01T08:00","site":"Abdomen L","notes":""}]}
+// takenAt without a timezone is read as phone-local time. Unknown peptides are created.
+const normName = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+let pendingImport = null;
+
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async () => {
+  const file = $('importFile').files[0];
+  $('importFile').value = '';
+  if (!file) return;
+  let data;
+  try { data = JSON.parse(await file.text()); } catch { toast('That file isn’t an import file'); return; }
+  const rows = Array.isArray(data) ? data : data?.entries;
+  if (!Array.isArray(rows) || !rows.length) { toast('No entries found in that file'); return; }
+
+  const byNorm = Object.fromEntries(state.peptides.map((p) => [normName(p.name), p]));
+  const existing = new Set(state.entries.map((e) => `${e.peptideId}|${e.takenAt.slice(0, 16)}|${e.dose}`));
+  const newPeps = new Map();
+  const items = [];
+  for (const r of rows) {
+    const name = String(r.peptide || r.peptideName || '').trim();
+    const when = new Date(r.takenAt);
+    if (!name || isNaN(when)) { items.push({ bad: true, r }); continue; }
+    const pep = byNorm[normName(name)];
+    if (!pep && !newPeps.has(normName(name))) newPeps.set(normName(name), name);
+    const e = {
+      peptideName: pep ? pep.name : name,
+      dose: num(r.dose), doseUnit: ['mcg', 'mg', 'IU'].includes(r.doseUnit) ? r.doseUnit : 'mcg',
+      volume: num(r.volume), volumeUnit: r.volumeUnit === 'units' ? 'units' : 'mL',
+      takenAt: when.toISOString(), site: String(r.site || '').trim(), notes: String(r.notes || '').trim()
+    };
+    const dup = pep && existing.has(`${pep.id}|${e.takenAt.slice(0, 16)}|${e.dose}`);
+    items.push({ e, norm: normName(name), dup });
+  }
+  pendingImport = { items, newPeps };
+  const good = items.filter((i) => !i.bad && !i.dup);
+  const dups = items.filter((i) => i.dup).length;
+  const bad = items.filter((i) => i.bad).length;
+  const fmtWhen = (iso) => new Date(iso).toLocaleString([], { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  $('impBody').innerHTML = `
+    <p><strong>${good.length}</strong> new entr${good.length === 1 ? 'y' : 'ies'} to add.${dups ? ` ${dups} already in your log will be skipped.` : ''}${bad ? ` ${bad} couldn’t be read (missing peptide or date).` : ''}</p>
+    ${newPeps.size ? `<p>New peptides that will be added: ${esc([...newPeps.values()].join(', '))}</p>` : ''}
+    <div class="imp-list">${items.filter((i) => !i.bad).sort((a, b) => b.e.takenAt.localeCompare(a.e.takenAt)).map((i) =>
+      `<div class="${i.dup ? 'dup' : ''}"><strong>${esc(i.e.peptideName)}</strong> · ${esc(fmtWhen(i.e.takenAt))}<br>${esc(entrySummary(i.e))}${i.e.notes ? ` · ${esc(i.e.notes)}` : ''}</div>`).join('')}</div>`;
+  $('impConfirm').hidden = !good.length;
+  $('setDialog').close();
+  $('impDialog').returnValue = '';
+  $('impDialog').showModal();
+});
+
+$('impDialog').addEventListener('close', async () => {
+  if ($('impDialog').returnValue !== 'import' || !pendingImport) return;
+  const { items, newPeps } = pendingImport;
+  pendingImport = null;
+  const ids = Object.fromEntries(state.peptides.map((p) => [normName(p.name), p]));
+  for (const [norm, name] of newPeps) {
+    const p = await DB.put('peptides', { name, vialAmount: null, vialUnit: 'mg', vialCount: 0, notes: 'Added by import', archived: false });
+    state.peptides.push(p);
+    ids[norm] = p;
+  }
+  let n = 0;
+  for (const i of items) {
+    if (i.bad || i.dup) continue;
+    const pep = ids[i.norm];
+    const rec = await DB.put('entries', { ...i.e, peptideId: pep.id, peptideName: pep.name, status: 'taken', vialId: null, scheduleId: null, source: 'import' });
+    state.entries.push(rec);
+    n++;
+  }
+  askPersist();
+  resetForm(true);
+  toast(`Imported ${n} entr${n === 1 ? 'y' : 'ies'}`);
+  show('history');
 });
 
 // ---------- start ----------

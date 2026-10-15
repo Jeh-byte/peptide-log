@@ -26,5 +26,8 @@ When changing any app file, bump `VERSION` in `sw.js` so installed web apps pick
 ## Local test
 `python3 -m http.server 8765` in this folder, open http://localhost:8765/.
 
+## Import file (v1.1)
+Settings > Choose import file. JSON: `{"format":"peptide-log-import","version":1,"entries":[{"peptide","dose","doseUnit","volume","volumeUnit","takenAt" (local, e.g. 2026-09-01T08:00),"site","notes"}]}`. Peptide names match loosely (case/punctuation ignored); unknown ones are created. Same peptide + minute + dose is skipped as a duplicate. A preview is shown before anything is saved.
+
 ## Later steps
 2 vials + reconstitution math (`vials` store, `entries.vialId`), 3 schedules + reminders (`schedules` store, `entries.scheduleId`, `entries.status`), 4 CSV + backup export.

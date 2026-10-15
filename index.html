@@ -154,7 +154,24 @@
     <form method="dialog">
       <h2>About this app</h2>
       <div id="setBody"></div>
+      <h2 class="section-h">Import entries</h2>
+      <p class="subtle-p">Add entries from an import file, such as one Claude made from photos of your written logs.</p>
+      <!-- No accept filter: Android's picker greys out .json files that apps label as a generic type. The contents are checked instead. -->
+      <input type="file" id="importFile" hidden>
+      <button type="button" class="btn ghost block" id="importBtn">Choose import file</button>
       <div class="actions"><button class="btn primary" value="close">Close</button></div>
+    </form>
+  </dialog>
+
+  <!-- Import preview -->
+  <dialog id="impDialog">
+    <form method="dialog">
+      <h2>Import entries</h2>
+      <div id="impBody"></div>
+      <div class="actions">
+        <button class="btn primary" value="import" id="impConfirm">Import</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
     </form>
   </dialog>
 

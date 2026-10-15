@@ -11,7 +11,7 @@ window.SEED_PEPTIDES = [
   { name: 'DSIP', vialAmount: 10, vialUnit: 'mg', vialCount: 1 },
   { name: 'Snap-8', vialAmount: 10, vialUnit: 'mg', vialCount: 1 },
   { name: 'KPV', vialAmount: 10, vialUnit: 'mg', vialCount: 2 },
-  { name: 'Glutathione', vialAmount: 15000, vialUnit: 'mg', vialCount: 1 },
+  { name: 'Glutathione', vialAmount: 1500, vialUnit: 'mg', vialCount: 7 },
   { name: 'Semax', vialAmount: 10, vialUnit: 'mg', vialCount: 1 },
   { name: 'Selank', vialAmount: 10, vialUnit: 'mg', vialCount: 1 },
   { name: 'Lemon Bottle', vialAmount: null, vialUnit: 'mg', vialCount: 1 },

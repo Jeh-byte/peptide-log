@@ -28,8 +28,8 @@ RES=android/app/src/main/res
 for spec in mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432; do
   IFS=: read -r dpi px fg <<<"$spec"
   convert icons/icon-512.png -resize "${px}x${px}" "$RES/mipmap-$dpi/ic_launcher.png"
-  convert icons/icon-512.png -resize "${px}x${px}" \( -size "${px}x${px}" xc:none -fill white -draw "circle $((px/2)),$((px/2)) $((px/2)),0" \) -compose DstIn -composite "$RES/mipmap-$dpi/ic_launcher_round.png"
-  convert icons/icon-512.png -resize "$((fg*80/100))x$((fg*80/100))" -background "$BG" -gravity center -extent "${fg}x${fg}" "$RES/mipmap-$dpi/ic_launcher_foreground.png"
+  convert icons/icon-512-maskable.png -resize "${px}x${px}" \( -size "${px}x${px}" xc:none -fill white -draw "circle $((px/2)),$((px/2)) $((px/2)),0" \) -compose DstIn -composite "$RES/mipmap-$dpi/ic_launcher_round.png"
+  convert icons/icon-512-maskable.png -resize "$((fg*80/100))x$((fg*80/100))" -background "$BG" -gravity center -extent "${fg}x${fg}" "$RES/mipmap-$dpi/ic_launcher_foreground.png"
 done
 cat > "$RES/values/ic_launcher_background.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>
