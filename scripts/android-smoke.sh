@@ -26,7 +26,16 @@ shot 1-launch
 adb shell pidof "$PKG" >/dev/null || fail "app is not running after launch"
 focused || fail "app is not in the foreground after launch"
 
-tap_text "History" || fail "could not find the History tab on screen"
+# WebView content only shows up in the UI dump when an accessibility service is on, so fall back to
+# tapping the middle tab by position: the tab bar sits at the bottom of the WebView, ~64 CSS px tall.
+tap_middle_tab() {
+  b=$(grep -oE 'class="android.webkit.WebView"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' "$OUT/ui-History.xml" | head -1 | grep -oE '[0-9]+' | tail -4 | tr '\n' ' ')
+  [ -n "$b" ] || return 1
+  read -r x1 y1 x2 y2 <<<"$b"
+  dpi=$(adb shell wm density | grep -oE '[0-9]+' | tail -1)
+  adb shell input tap $(( (x1 + x2) / 2 )) $(( y2 - 32 * dpi / 160 ))
+}
+tap_text "History" || tap_middle_tab || fail "could not find the History tab on screen"
 sleep 3
 shot 2-history
 
