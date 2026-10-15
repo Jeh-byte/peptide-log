@@ -404,10 +404,12 @@ $('settingsBtn').addEventListener('click', async () => {
 })();
 
 // Android back button (APK only): close a dialog, leave edit mode, return to the Log tab, then leave the app.
-CapApp?.addListener('backButton', () => {
+if (NATIVE) console.log('[peptide-log] native', JSON.stringify({ hasApp: !!CapApp, plugins: Object.keys(window.Capacitor.Plugins || {}) }));
+Promise.resolve(CapApp?.addListener('backButton', () => {
+  console.log('[peptide-log] back pressed');
   const open = document.querySelector('dialog[open]');
   if (open) { open.close('cancel'); return; }
   if (state.editingId) { $('cancelEditBtn').click(); return; }
   if (!$('view-log').classList.contains('active')) { show('log'); return; }
   CapApp.exitApp();
-});
+})).then((h) => NATIVE && console.log('[peptide-log] back listener added', !!h), (e) => console.error('[peptide-log] back listener failed', e));

@@ -1,5 +1,6 @@
 {
   "appId": "io.github.jehbyte.peptidelog",
   "appName": "Peptide Log",
-  "webDir": "www"
+  "webDir": "www",
+  "loggingBehavior": "production"
 }
