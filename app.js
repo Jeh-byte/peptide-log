@@ -3,7 +3,7 @@ const SITES = ['Abdomen L', 'Abdomen R', 'Thigh L', 'Thigh R', 'Arm L', 'Arm R',
 const ADD_NEW = '__add__';
 // Set when running inside the Android APK (Capacitor), not in Chrome.
 const NATIVE = !!window.Capacitor?.isNativePlatform?.();
-const CapApp = NATIVE ? window.Capacitor.Plugins?.App || window.Capacitor.registerPlugin?.('App') : null;
+const CapApp = NATIVE ? window.Capacitor.registerPlugin('App') : null;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -404,12 +404,10 @@ $('settingsBtn').addEventListener('click', async () => {
 })();
 
 // Android back button (APK only): close a dialog, leave edit mode, return to the Log tab, then leave the app.
-if (NATIVE) console.log('[peptide-log] native', JSON.stringify({ hasApp: !!CapApp, plugins: Object.keys(window.Capacitor.Plugins || {}) }));
-Promise.resolve(CapApp?.addListener('backButton', () => {
-  console.log('[peptide-log] back pressed');
+CapApp?.addListener('backButton', () => {
   const open = document.querySelector('dialog[open]');
   if (open) { open.close('cancel'); return; }
   if (state.editingId) { $('cancelEditBtn').click(); return; }
   if (!$('view-log').classList.contains('active')) { show('log'); return; }
   CapApp.exitApp();
-})).then((h) => NATIVE && console.log('[peptide-log] back listener added', !!h), (e) => console.error('[peptide-log] back listener failed', e));
+});

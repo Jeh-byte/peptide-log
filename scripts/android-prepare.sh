@@ -10,6 +10,10 @@ rm -rf www android
 mkdir -p www
 cp index.html styles.css seed.js db.js app.js sw.js manifest.webmanifest www/
 cp -r icons www/
+# Capacitor's JS runtime delivers native events (e.g. the back button) to the page. APK only.
+cp node_modules/@capacitor/core/dist/capacitor.js www/
+sed -i 's|<meta charset="utf-8">|<meta charset="utf-8">\n  <script src="capacitor.js"></script>|' www/index.html
+grep -q 'src="capacitor.js"' www/index.html
 
 npx cap add android
 npx cap sync android

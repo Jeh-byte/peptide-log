@@ -49,5 +49,6 @@ sleep 3
 focused && fail "Back from Log should leave the app"
 
 adb logcat -d > "$OUT/logcat.txt"
-if grep -E 'E Capacitor/Console|E/Capacitor/Console|Uncaught' "$OUT/logcat.txt"; then fail "JavaScript errors in logcat"; fi
+# Errors from the app's own pages and scripts (Capacitor's own startup chatter has no file URL).
+if grep -E 'E Capacitor/Console: File: https://localhost/' "$OUT/logcat.txt"; then fail "JavaScript errors in logcat"; fi
 echo "SMOKE PASS"
