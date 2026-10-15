@@ -50,8 +50,10 @@ jobs:
             echo "::error::Set the ANDROID_KEYSTORE_B64 and ANDROID_KEYSTORE_PASSWORD repository secrets (see README)."
             exit 1
           fi
+          # Secrets set from Windows can carry a trailing CRLF.
+          export KS_PASS="$(printf '%s' "$KS_PASS" | tr -d '\r\n')"
           BT="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
-          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          printf '%s' "$KS_B64" | tr -d '\r\n ' | base64 -d > "$RUNNER_TEMP/release.p12"
           "$BT/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
           "$BT/apksigner" sign --ks "$RUNNER_TEMP/release.p12" --ks-type PKCS12 --ks-pass env:KS_PASS \
             --ks-key-alias peptidelog --out peptide-log.apk "$RUNNER_TEMP/aligned.apk"
