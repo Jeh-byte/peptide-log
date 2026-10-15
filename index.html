@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Peptide Log</title>
+  <meta name="description" content="Offline peptide dose log. All data stays on your phone.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1 id="title">Log a dose</h1>
+    <button class="icon-btn" id="settingsBtn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Zm7.4-2.5a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.3 2.9a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1L11 21h4l.3-2.9a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5Z"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <!-- LOG -->
+    <section id="view-log" class="view active">
+      <form id="logForm" autocomplete="off">
+        <div class="edit-banner" id="editBanner" hidden>Editing an earlier entry</div>
+
+        <label class="field">
+          <span>Peptide</span>
+          <select id="fPeptide" required></select>
+        </label>
+        <div class="hint" id="lastHint" hidden></div>
+
+        <div class="row">
+          <label class="field grow">
+            <span>Dose</span>
+            <input id="fDose" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 250">
+          </label>
+          <label class="field unit">
+            <span>&nbsp;</span>
+            <select id="fDoseUnit"><option>mcg</option><option>mg</option><option>IU</option></select>
+          </label>
+        </div>
+
+        <div class="row">
+          <label class="field grow">
+            <span>Volume</span>
+            <input id="fVolume" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 0.1">
+          </label>
+          <label class="field unit">
+            <span>&nbsp;</span>
+            <select id="fVolumeUnit"><option value="mL">mL</option><option value="units">units</option></select>
+          </label>
+        </div>
+        <div class="hint subtle" id="volHint"></div>
+
+        <div class="row">
+          <label class="field grow">
+            <span>Date and time</span>
+            <input id="fWhen" type="datetime-local" required>
+          </label>
+          <button type="button" class="btn ghost now-btn" id="nowBtn">Now</button>
+        </div>
+
+        <div class="field">
+          <span>Injection site</span>
+          <div class="chips" id="siteChips"></div>
+          <input id="fSiteOther" type="text" placeholder="Describe site" hidden>
+        </div>
+
+        <label class="field">
+          <span>Notes</span>
+          <textarea id="fNotes" rows="2" placeholder="Optional"></textarea>
+        </label>
+
+        <div class="actions">
+          <button type="submit" class="btn primary" id="saveBtn">Save dose</button>
+          <button type="button" class="btn ghost" id="cancelEditBtn" hidden>Cancel</button>
+          <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="view-history" class="view">
+      <div class="row filters">
+        <select id="histFilter" aria-label="Filter by peptide"></select>
+        <input id="histSearch" type="search" placeholder="Search notes or site" aria-label="Search">
+      </div>
+      <div class="stats" id="histStats"></div>
+      <div id="histList"></div>
+    </section>
+
+    <!-- PEPTIDES -->
+    <section id="view-peptides" class="view">
+      <button class="btn primary block" id="addPeptideBtn">+ Add peptide</button>
+      <div id="pepList"></div>
+      <h2 class="section-h">Mixing supplies</h2>
+      <div id="supplyList"></div>
+      <label class="toggle"><input type="checkbox" id="showArchived"> Show archived peptides</label>
+    </section>
+  </main>
+
+  <nav class="tabs">
+    <button data-view="log" class="active">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>Log
+    </button>
+    <button data-view="history">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.05-4.95L15 10h7V3l-2.64 2.64A8.97 8.97 0 0 0 13 3Zm-1 5v5l4 2.4.8-1.3-3.3-2V8z"/></svg>History
+    </button>
+    <button data-view="peptides">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 2h6v2h-1v2.1a2 2 0 0 1 2 1.9v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-1.9V4H9zm1 10v8h4v-8z"/></svg>Peptides
+    </button>
+  </nav>
+
+  <!-- Peptide editor -->
+  <dialog id="pepDialog">
+    <form method="dialog" id="pepForm">
+      <h2 id="pepDialogTitle">Add peptide</h2>
+      <label class="field"><span>Name</span><input id="pName" required></label>
+      <div class="row">
+        <label class="field grow"><span>Amount per vial</span><input id="pAmount" type="number" inputmode="decimal" step="any" min="0"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="pUnit"><option>mg</option><option>mcg</option><option>IU</option><option>mL</option></select></label>
+      </div>
+      <label class="field"><span>Vials on hand</span><input id="pCount" type="number" inputmode="numeric" step="1" min="0" value="1"></label>
+      <label class="field"><span>Notes</span><textarea id="pNotes" rows="2"></textarea></label>
+      <label class="toggle" id="pArchivedWrap"><input type="checkbox" id="pArchived"> Archived (hide from the log list)</label>
+      <div class="actions">
+        <button class="btn primary" value="save" id="pSave">Save</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Supply editor -->
+  <dialog id="supDialog">
+    <form method="dialog" id="supForm">
+      <h2>Edit supply</h2>
+      <label class="field"><span>Name</span><input id="sName" required></label>
+      <div class="row">
+        <label class="field grow"><span>Amount per vial</span><input id="sAmount" type="number" inputmode="decimal" step="any" min="0"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="sUnit"><option>mL</option><option>mg</option></select></label>
+      </div>
+      <label class="field"><span>Vials on hand</span><input id="sCount" type="number" inputmode="numeric" step="1" min="0"></label>
+      <div class="actions">
+        <button class="btn primary" value="save">Save</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Settings -->
+  <dialog id="setDialog">
+    <form method="dialog">
+      <h2>About this app</h2>
+      <div id="setBody"></div>
+      <div class="actions"><button class="btn primary" value="close">Close</button></div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="seed.js"></script>
+  <script src="db.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
