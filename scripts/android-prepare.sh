@@ -36,7 +36,7 @@ EOF
 
 # Splash screens: replace the Capacitor logo with the app icon on the brand colour.
 find "$RES" -name 'splash.png' | while read -r f; do
-  read -r w h < <(identify -format '%w %h' "$f")
+  read -r w h < <(identify -format '%w %h\n' "$f")
   s=$(( (w < h ? w : h) * 35 / 100 ))
   convert -size "${w}x${h}" "xc:$BG" \( icons/icon-512.png -resize "${s}x${s}" \) -gravity center -composite "$f"
 done
