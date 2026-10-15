@@ -1,0 +1,14 @@
+{
+  "name": "peptide-log",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline peptide dose log. Web app plus an Android APK built with Capacitor.",
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.1",
+    "@capacitor/core": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  }
+}

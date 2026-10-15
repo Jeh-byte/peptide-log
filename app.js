@@ -1,6 +1,9 @@
 const APP_VERSION = '1.0.0';
 const SITES = ['Abdomen L', 'Abdomen R', 'Thigh L', 'Thigh R', 'Arm L', 'Arm R', 'Glute L', 'Glute R', 'Nasal', 'Oral', 'Topical', 'Other'];
 const ADD_NEW = '__add__';
+// Set when running inside the Android APK (Capacitor), not in Chrome.
+const NATIVE = !!window.Capacitor?.isNativePlatform?.();
+const CapApp = NATIVE ? window.Capacitor.Plugins?.App || window.Capacitor.registerPlugin?.('App') : null;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -64,7 +67,10 @@ async function load() {
 const TITLES = { log: 'Log a dose', history: 'History', peptides: 'Peptides' };
 function show(view) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
-  document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  document.querySelectorAll('.tabs button').forEach((b) => {
+    b.classList.toggle('active', b.dataset.view === view);
+    if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
   $('title').textContent = view === 'log' && state.editingId ? 'Edit dose' : TITLES[view];
   if (view === 'history') renderHistory();
   if (view === 'peptides') renderPeptides();
@@ -90,7 +96,7 @@ function renderPeptideSelect(selectId) {
 function renderSites() {
   const last = lastEntryFor($('fPeptide').value);
   $('siteChips').innerHTML = SITES.map((s) =>
-    `<button type="button" class="chip${state.site === s ? ' on' : ''}" data-site="${esc(s)}">${esc(s)}${last && last.site === s ? '<span class="last">last</span>' : ''}</button>`
+    `<button type="button" class="chip${state.site === s ? ' on' : ''}" data-site="${esc(s)}" aria-pressed="${state.site === s}">${esc(s)}${last && last.site === s ? '<span class="last" aria-hidden="true">last</span><span class="sr-only">, used last time</span>' : ''}</button>`
   ).join('');
   $('fSiteOther').hidden = state.site !== 'Other';
 }
@@ -363,19 +369,21 @@ $('supDialog').addEventListener('close', async () => {
 
 // ---------- settings ----------
 $('settingsBtn').addEventListener('click', async () => {
-  let persisted = 'unknown', usage = '';
+  let persisted = 'unknown', usage = '', version = APP_VERSION;
   try {
-    if (navigator.storage?.persisted) persisted = (await navigator.storage.persisted()) ? 'Protected' : 'Not yet protected (Chrome decides; installing the app helps)';
+    if (NATIVE) persisted = 'App private storage';
+    else if (navigator.storage?.persisted) persisted = (await navigator.storage.persisted()) ? 'Protected' : 'Not yet protected (Chrome decides; installing the app helps)';
     if (navigator.storage?.estimate) { const e = await navigator.storage.estimate(); usage = `${(e.usage / 1024).toFixed(0)} KB used`; }
+    if (CapApp) version = `${(await CapApp.getInfo()).version} (Android)`;
   } catch {}
   const installed = matchMedia('(display-mode: standalone)').matches;
   $('setBody').innerHTML = `
     <p>All your data is stored only on this phone, inside this app. Nothing is uploaded.</p>
     <p><strong>${state.entries.length}</strong> doses logged · <strong>${state.peptides.length}</strong> peptides</p>
     <p>Storage: ${esc(persisted)}${usage ? ` · ${esc(usage)}` : ''}</p>
-    <p>${installed ? 'Running as an installed app.' : 'Tip: install from Chrome’s menu (⋮ → Add to Home screen / Install app) so it opens like a normal app and works offline.'}</p>
-    <p class="subtle">Clearing Chrome’s site data or uninstalling the app deletes your log. Export and backup is coming in a later update.</p>
-    <p style="color:var(--muted);font-size:13px">Version ${APP_VERSION}</p>`;
+    ${NATIVE ? '' : `<p>${installed ? 'Running as an installed app.' : 'Tip: install from Chrome’s menu (⋮ → Add to Home screen / Install app) so it opens like a normal app and works offline.'}</p>`}
+    <p class="subtle">${NATIVE ? 'Installing a newer version keeps your log. Uninstalling the app or clearing its storage deletes it.' : 'Clearing Chrome’s site data or uninstalling the app deletes your log.'} Export and backup is coming in a later update.</p>
+    <p style="color:var(--muted);font-size:13px">Version ${esc(version)}</p>`;
   $('setDialog').showModal();
 });
 
@@ -389,7 +397,17 @@ $('settingsBtn').addEventListener('click', async () => {
     return;
   }
   resetForm(false);
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  // The APK already has every file on the phone; a cache would only serve stale files after an update.
+  if (!NATIVE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
 })();
+
+// Android back button (APK only): close a dialog, leave edit mode, return to the Log tab, then leave the app.
+CapApp?.addListener('backButton', () => {
+  const open = document.querySelector('dialog[open]');
+  if (open) { open.close('cancel'); return; }
+  if (state.editingId) { $('cancelEditBtn').click(); return; }
+  if (!$('view-log').classList.contains('active')) { show('log'); return; }
+  CapApp.exitApp();
+});
