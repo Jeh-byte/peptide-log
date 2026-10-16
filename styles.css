@@ -360,11 +360,11 @@ dialog p { margin: 0 0 10px; }
 .info-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; padding: 0 14px; }
 .info-card summary { cursor: pointer; list-style: none; padding: 12px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .info-card summary::-webkit-details-marker { display: none; }
-.info-card summary::after { content: '▾'; margin-left: auto; color: var(--muted); }
+.info-card summary::after { content: '▾'; margin-left: auto; color: var(--muted); order: 1; }
 .info-card[open] summary::after { content: '▴'; }
 .info-card[open] { padding-bottom: 12px; }
 .info-name { font-weight: 650; }
-.info-sub { flex-basis: 100%; font-size: 13px; color: var(--muted); }
+.info-sub { flex-basis: 100%; font-size: 13px; color: var(--muted); order: 2; }
 .info-card p, .info-card li { font-size: 14px; margin: 0 0 8px; }
 .info-card ul, .info-card ol { padding-left: 20px; margin: 0 0 8px; }
 .info-card h4 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 12px 0 6px; }
