@@ -354,7 +354,7 @@ function openPeptideDialog(p, done) {
   $('pAmount').value = fmtNum(p?.vialAmount);
   $('pUnit').value = p?.vialUnit || 'mg';
   $('pCount').value = p ? (p.vialCount ?? '') : 1;
-  $('pWater').value = fmtNum(p?.bacWaterMl);
+  $('pWater').value = fmtNum(p ? p.bacWaterMl : window.SEED_MIX_DEFAULT);
   $('pNotes').value = p?.notes || '';
   $('pProtocol').value = p?.protocol || '';
   $('pCycleOn').value = fmtNum(p?.cycleOnWeeks);

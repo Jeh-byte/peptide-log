@@ -368,15 +368,25 @@ function findPeptide(name) {
   return starts.find((p) => activeVial(p.id)) || starts.sort(byName)[0] || null;
 }
 async function seedSetup() {
-  if (!(await DB.getMeta('mixSeeded'))) {
-    for (const [name, ml] of Object.entries(window.SEED_MIX || {})) {
-      const p = findPeptide(name);
-      if (p && p.bacWaterMl == null) {
+  // 'mixRule' replaces the earlier 'mixSeeded' (3 peptides only): it sets every peptide and every
+  // vial already mixed to the stated bac water.
+  if (!(await DB.getMeta('mixRule'))) {
+    const mlFor = (name) => {
+      const hit = Object.entries(window.SEED_MIX || {}).find(([n]) => normName(name).startsWith(normName(n)));
+      return hit ? hit[1] : window.SEED_MIX_DEFAULT;
+    };
+    for (const p of state.peptides) {
+      const ml = mlFor(p.name);
+      if (p.bacWaterMl !== ml) {
         const rec = await DB.put('peptides', { ...p, bacWaterMl: ml });
         state.peptides = state.peptides.map((x) => (x.id === rec.id ? rec : x));
       }
+      for (const v of state.vials.filter((x) => x.peptideId === p.id && x.diluentMl !== ml)) {
+        const rec = await DB.put('vials', { ...v, diluentMl: ml });
+        state.vials = state.vials.map((x) => (x.id === rec.id ? rec : x));
+      }
     }
-    await DB.setMeta('mixSeeded', new Date().toISOString());
+    await DB.setMeta('mixRule', new Date().toISOString());
   }
   if (!(await DB.getMeta('schedulesSeeded'))) {
     if (!state.schedules.length) {

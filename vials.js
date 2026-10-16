@@ -161,7 +161,7 @@ function openVialDialog(p, done) {
   $('vialCurrent').hidden = !cur;
   $('vAmount').value = fmtNum(cur?.amount ?? p.vialAmount);
   $('vUnit').value = cur?.unit || p.vialUnit || 'mg';
-  $('vWater').value = fmtNum(cur?.diluentMl ?? p.bacWaterMl);
+  $('vWater').value = fmtNum(cur?.diluentMl ?? p.bacWaterMl ?? window.SEED_MIX_DEFAULT);
   $('vMixed').value = toLocalInput(new Date());
   $('vTake').checked = (p.vialCount ?? 0) > 0;
   $('vTakeWrap').hidden = !((p.vialCount ?? 0) > 0);

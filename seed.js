@@ -26,10 +26,11 @@ window.SEED_SUPPLIES = [
   { name: 'Bacteriostatic water', amount: 10, unit: 'mL', count: 2 }
 ];
 
-// Bac water per vial (mL), worked out from Jeh's stated doses: GHK-Cu 2.5 mg = 5 units (100 mg vial),
-// KPV 500 mcg = 10 units and SS-31 2 mg = 40 units (10 mg vials) all mean 2 mL. Applied once to
-// peptides that have no bac water set yet, on new and existing installs.
-window.SEED_MIX = { 'GHK-Cu': 2, 'KPV': 2, 'SS-31': 2 };
+// Bac water per vial (mL), from Jeh (16 Oct 2026): every vial gets 2 mL except Glutathione, 7.5 mL.
+// Applied once to every peptide and every vial already mixed, on new and existing installs; new
+// peptides and new mixes default to SEED_MIX_DEFAULT.
+window.SEED_MIX_DEFAULT = 2;
+window.SEED_MIX = { 'Glutathione': 7.5 };
 
 // Schedules from Jeh's messages (16 Oct 2026). Applied once. Peptides are matched by name; an item
 // with no dose takes the last logged dose of that peptide, or opens the log form when tapped.
