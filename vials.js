@@ -49,8 +49,59 @@ const daysText = (d) => (d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days 
 function vialLine(v, s) {
   const parts = [`${fmtAmt(s.left)} ${v.unit} left of ${fmtAmt(v.amount)}`];
   if (s.dosesLeft != null) parts.push(`about ${s.dosesLeft} dose${s.dosesLeft === 1 ? '' : 's'}`);
+  if (s.typical && v.diluentMl > 0 && v.amount > 0) parts.push(`${fmtUnits((s.typical / v.amount) * v.diluentMl * 100)} units per dose`);
   parts.push(`mixed ${daysText(s.ageDays)}`);
   return parts.join(' · ');
+}
+
+// ---------- mixing maths ----------
+// The mix a dose is drawn from: the current vial if its water amount is known, otherwise the
+// peptide's vial size and "Bac water added".
+function mixFor(pid) {
+  const v = activeVial(pid);
+  if (v && v.diluentMl > 0 && v.amount > 0) return { amount: v.amount, unit: v.unit, ml: v.diluentMl };
+  const p = state.peptides.find((x) => x.id === pid);
+  if (p && p.vialAmount > 0 && p.bacWaterMl > 0) return { amount: p.vialAmount, unit: p.vialUnit, ml: p.bacWaterMl };
+  return null;
+}
+function convertDose(dose, from, to) {
+  if (from === to) return dose;
+  if (from === 'mcg' && to === 'mg') return dose / 1000;
+  if (from === 'mg' && to === 'mcg') return dose * 1000;
+  return null;
+}
+// mL and U-100 syringe units for a dose, or null when the units don't convert (e.g. IU into mg).
+function drawFor(dose, doseUnit, mix) {
+  const d = convertDose(dose, doseUnit, mix.unit);
+  if (d == null || !(mix.amount > 0) || !(mix.ml > 0)) return null;
+  const ml = (d / mix.amount) * mix.ml;
+  return { ml, units: ml * 100 };
+}
+const fmtUnits = (u) => String(+u.toFixed(u < 10 ? 2 : 1));
+function strengthText(mix) {
+  const perMl = mix.amount / mix.ml, perUnit = perMl / 100;
+  const unitTxt = mix.unit === 'mg' && perUnit < 1 ? `${fmtAmt(perUnit * 1000)} mcg` : `${fmtAmt(perUnit)} ${mix.unit}`;
+  return `${fmtAmt(mix.amount)} ${mix.unit} in ${fmtAmt(mix.ml)} mL = ${fmtAmt(perMl)} ${mix.unit}/mL (${unitTxt} per unit)`;
+}
+
+// ---------- cycles ("4 on / 4 off") ----------
+// Where a peptide's cycle is on day k: {on, week, of} or null when no cycle is set.
+function cycleAt(p, k) {
+  const on = p.cycleOnWeeks > 0 ? p.cycleOnWeeks : 0, off = p.cycleOffWeeks > 0 ? p.cycleOffWeeks : 0;
+  if (!on || !p.cycleStart) return null;
+  const ds = dayDiff(p.cycleStart, k);
+  if (ds < 0) return { on: false, before: true };
+  const pos = off ? ds % ((on + off) * 7) : ds;
+  if (pos < on * 7) return { on: true, week: Math.floor(pos / 7) + 1, of: on };
+  if (!off) return { on: false, done: true };
+  return { on: false, week: Math.floor((pos - on * 7) / 7) + 1, of: off, nextOn: shiftDay(k, (on + off) * 7 - pos) };
+}
+function cycleText(p) {
+  const c = cycleAt(p, todayKey());
+  if (!c) return '';
+  if (c.before) return `Cycle starts ${shortDate(p.cycleStart)}`;
+  if (c.done) return `Cycle finished (${p.cycleOnWeeks} weeks on)`;
+  return c.on ? `On · week ${c.week} of ${c.of}` : `Off · week ${c.week} of ${c.of}, back on ${shortDate(c.nextOn)}`;
 }
 function meterHTML(s) {
   const cls = s.empty ? ' empty' : s.low ? ' low' : '';
@@ -65,25 +116,29 @@ function vialAlerts() {
     const p = state.peptides.find((x) => x.id === v.peptideId);
     if (!p || p.archived) continue;
     const s = vialStatus(v);
-    if (s.empty) out.push({ p, level: 'critical', label: 'Probably empty', text: `${fmtAmt(s.left)} ${v.unit} left, less than one dose` });
-    else if (s.low) out.push({ p, level: 'warning', label: 'Running low', text: `about ${s.dosesLeft} dose${s.dosesLeft === 1 ? '' : 's'} left (${fmtAmt(s.left)} ${v.unit})` });
-    if (s.old) out.push({ p, level: 'warning', label: 'Mixed over 4 weeks ago', text: `mixed ${s.ageDays} days ago` });
+    const base = { p, title: p.name, action: 'mix', btn: 'Mix new vial' };
+    if (s.empty) out.push({ ...base, level: 'critical', label: 'Probably empty', text: `${fmtAmt(s.left)} ${v.unit} left, less than one dose` });
+    else if (s.low) out.push({ ...base, level: 'warning', label: 'Running low', text: `about ${s.dosesLeft} dose${s.dosesLeft === 1 ? '' : 's'} left (${fmtAmt(s.left)} ${v.unit})` });
+    if (s.old) out.push({ ...base, level: 'warning', label: 'Mixed over 4 weeks ago', text: `mixed ${s.ageDays} days ago` });
   }
-  return out.sort((a, b) => (a.level === b.level ? byName(a.p, b.p) : a.level === 'critical' ? -1 : 1));
+  const rank = { critical: 0, warning: 1, info: 2 };
+  return out.sort((a, b) => rank[a.level] - rank[b.level] || byName(a.p, b.p));
 }
 function renderAlerts() {
-  const list = state.editingId ? [] : vialAlerts();
+  const list = state.editingId ? [] : [...vialAlerts(), ...backupAlerts()];
   $('alerts').hidden = !list.length;
   $('alerts').innerHTML = list.map((a) => `
     <div class="alert ${a.level}">
-      <span class="alert-icon" aria-hidden="true">${a.level === 'critical' ? '×' : '!'}</span>
-      <div class="alert-text"><strong>${esc(a.p.name)}</strong> · ${esc(a.label)}<br><span>${esc(a.text)}</span></div>
-      <button type="button" class="btn ghost small" data-mix="${esc(a.p.id)}">Mix new vial</button>
+      <span class="alert-icon" aria-hidden="true">${a.level === 'critical' ? '×' : a.level === 'info' ? 'i' : '!'}</span>
+      <div class="alert-text"><strong>${esc(a.title)}</strong> · ${esc(a.label)}<br><span>${esc(a.text)}</span></div>
+      <button type="button" class="btn ghost small" data-action="${a.action}" data-id="${esc(a.p?.id || '')}">${esc(a.btn)}</button>
     </div>`).join('');
 }
 $('alerts').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-mix]');
-  if (b) openVialDialog(state.peptides.find((p) => p.id === b.dataset.mix));
+  const b = e.target.closest('[data-action]');
+  if (!b) return;
+  if (b.dataset.action === 'mix') openVialDialog(state.peptides.find((p) => p.id === b.dataset.id));
+  if (b.dataset.action === 'backup') backupNow().catch((err) => toast(`Couldn’t save the file: ${err?.message || err}`));
 });
 
 // Under the peptide picker: what's left in the current vial.
@@ -106,7 +161,7 @@ function openVialDialog(p, done) {
   $('vialCurrent').hidden = !cur;
   $('vAmount').value = fmtNum(cur?.amount ?? p.vialAmount);
   $('vUnit').value = cur?.unit || p.vialUnit || 'mg';
-  $('vWater').value = fmtNum(cur?.diluentMl);
+  $('vWater').value = fmtNum(cur?.diluentMl ?? p.bacWaterMl);
   $('vMixed').value = toLocalInput(new Date());
   $('vTake').checked = (p.vialCount ?? 0) > 0;
   $('vTakeWrap').hidden = !((p.vialCount ?? 0) > 0);
@@ -146,12 +201,16 @@ $('vialDialog').addEventListener('close', async () => {
   const mixedAt = mixed.toISOString();
   const cur = activeVial(p.id);
   if (cur) await finishVial(cur, mixedAt > cur.mixedAt ? mixedAt : new Date().toISOString());
-  const v = await DB.put('vials', { peptideId: p.id, amount, unit: $('vUnit').value, diluentMl: num($('vWater').value), mixedAt, status: 'active', finishedAt: null });
+  const water = num($('vWater').value);
+  const v = await DB.put('vials', { peptideId: p.id, amount, unit: $('vUnit').value, diluentMl: water, mixedAt, status: 'active', finishedAt: null });
   state.vials.push(v);
-  if ($('vTake').checked && (p.vialCount ?? 0) > 0) {
-    const rec = await DB.put('peptides', { ...p, vialCount: p.vialCount - 1 });
-    state.peptides = state.peptides.map((x) => (x.id === rec.id ? rec : x));
-  }
+  // the peptide remembers this mix, so units work out the same way next time
+  const latest = state.peptides.find((x) => x.id === p.id) || p;
+  const patch = { vialAmount: amount, vialUnit: $('vUnit').value };
+  if (water > 0) patch.bacWaterMl = water;
+  if ($('vTake').checked && (latest.vialCount ?? 0) > 0) patch.vialCount = latest.vialCount - 1;
+  const rec = await DB.put('peptides', { ...latest, ...patch });
+  state.peptides = state.peptides.map((x) => (x.id === rec.id ? rec : x));
   toast(`New ${p.name} vial started`);
   afterVialChange();
 });

@@ -1,7 +1,8 @@
 // IndexedDB storage. Everything lives on the device; nothing is sent anywhere.
 //
 // Data model (designed so later steps only add fields/records, never migrate old ones):
-//   peptides  {id, name, vialAmount, vialUnit, vialCount, notes, archived, createdAt, updatedAt}
+//   peptides  {id, name, vialAmount, vialUnit, vialCount, bacWaterMl, notes, protocol,
+//              cycleOnWeeks, cycleOffWeeks, cycleStart ('YYYY-MM-DD'), archived, createdAt, updatedAt}
 //   supplies  {id, name, amount, unit, count, createdAt, updatedAt}          e.g. bac water
 //   entries   {id, peptideId, peptideName, dose, doseUnit, volume, volumeUnit,
 //              takenAt (ISO), site, notes, status ('taken'), vialId, scheduleId,
@@ -10,7 +11,8 @@
 //              finishedAt, createdAt, updatedAt}   doses from mixedAt to finishedAt come out of it
 //   checkins  {id = date 'YYYY-MM-DD', date, sleep, energy, mood (1-5), sideEffects [], sideOther,
 //              weight, weightUnit ('kg'|'lb'), waist, waistUnit ('cm'|'in'), createdAt, updatedAt}
-//   schedules step 3: {id, peptideId, dose, doseUnit, rule, times, active, ...}
+//   schedules {id, name, rule ('daily'|'every'|'rotate'), every, blockDays, startDate, active,
+//              items [{peptideId, dose, doseUnit, volume, volumeUnit, time 'HH:MM'}]}  see schedule.js
 //   meta      {key, value}  app settings and flags (e.g. seeded, units)
 const DB_NAME = 'peptide-log';
 const DB_VERSION = 2;
@@ -80,6 +82,9 @@ const DB = (() => {
       return tx(store, 'readwrite', (s) => wrap(s.put(rec))).then(() => rec);
     },
     del: (store, id) => tx(store, 'readwrite', (s) => wrap(s.delete(id))),
+    // Restore from a backup: write records exactly as saved (no new ids or timestamps).
+    putMany: (store, recs) => tx(store, 'readwrite', (s) => Promise.all(recs.map((r) => wrap(s.put(r))))),
+    clear: (store) => tx(store, 'readwrite', (s) => wrap(s.clear())),
     getMeta: (key) => tx('meta', 'readonly', (s) => wrap(s.get(key))).then((r) => (r ? r.value : undefined)),
     setMeta: (key, value) => tx('meta', 'readwrite', (s) => wrap(s.put({ key, value }))),
 

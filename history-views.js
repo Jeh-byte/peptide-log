@@ -18,6 +18,25 @@ const KG_PER_LB = 0.45359237, CM_PER_IN = 2.54;
 const weightIn = (c, unit) => (c.weight == null ? null : (c.weightUnit || 'kg') === unit ? c.weight : unit === 'kg' ? c.weight * KG_PER_LB : c.weight / KG_PER_LB);
 const waistIn = (c, unit) => (c.waist == null ? null : (c.waistUnit || 'cm') === unit ? c.waist : unit === 'cm' ? c.waist * CM_PER_IN : c.waist / CM_PER_IN);
 const keyDate = (k) => { const [Y, M, D] = k.split('-').map(Number); return new Date(Y, M - 1, D); };
+
+// Weight for a day: the How I feel weight, or else a weight written in that day's dose notes
+// (e.g. "92.4kg" in a Reta entry from the notebook import).
+const NOTE_WEIGHT = /(\d{2,3}(?:\.\d{1,2})?)\s?(kg|kgs|lb|lbs)\b/i;
+let noteWeights = null, noteWeightsFor = null;
+function weightOn(k, unit) {
+  const c = checkinFor(k);
+  if (c?.weight != null) return { v: weightIn(c, unit), src: 'feel' };
+  if (!noteWeightsFor) { // rebuilt on each Progress render (renderProgress clears it)
+    noteWeights = {};
+    for (const e of state.entries) {
+      const m = e.notes && e.notes.match(NOTE_WEIGHT);
+      if (m) noteWeights[dayKey(e.takenAt)] = { weight: +m[1], weightUnit: m[2].toLowerCase().startsWith('lb') ? 'lb' : 'kg' };
+    }
+    noteWeightsFor = true;
+  }
+  const n = noteWeights[k];
+  return n ? { v: weightIn(n, unit), src: 'notes' } : null;
+}
 const shortDate = (k) => keyDate(k).toLocaleDateString([], { day: 'numeric', month: 'short' });
 
 // ---------- calendar ----------
@@ -28,21 +47,29 @@ function renderCalendar() {
   $('calTitle').textContent = new Date(Y, M - 1, 1).toLocaleDateString([], { month: 'long', year: 'numeric' });
   $('calNext').disabled = month >= today.slice(0, 7);
 
-  const counts = {};
-  for (const e of state.entries) { const k = dayKey(e.takenAt); if (k.startsWith(month)) counts[k] = (counts[k] || 0) + 1; }
+  const counts = {}, peps = {};
+  for (const e of state.entries) {
+    const k = dayKey(e.takenAt);
+    if (!k.startsWith(month)) continue;
+    counts[k] = (counts[k] || 0) + 1;
+    (peps[k] ||= new Set()).add(e.peptideId);
+  }
   const lead = (new Date(Y, M - 1, 1).getDay() + 6) % 7; // weeks start on Monday
   const days = new Date(Y, M, 0).getDate();
   const weekdays = [...Array(7)].map((_, i) => new Date(2024, 0, 1 + i).toLocaleDateString([], { weekday: 'narrow' }));
   let html = weekdays.map((w) => `<div class="cal-wd" aria-hidden="true">${esc(w)}</div>`).join('') + '<div></div>'.repeat(lead);
   for (let d = 1; d <= days; d++) {
     const k = `${month}-${String(d).padStart(2, '0')}`;
-    const n = counts[k] || 0;
+    const n = counts[k] || 0, np = peps[k]?.size || 0;
     const face = faceFor(checkinFor(k)?.mood);
-    const label = `${keyDate(k).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}: ${n} dose${n === 1 ? '' : 's'}${face ? `, mood ${face[2]}` : ''}`;
+    const pepNames = np ? [...peps[k]].map((id) => state.peptides.find((p) => p.id === id)?.name || 'peptide').sort() : [];
+    const label = `${keyDate(k).toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}: ${n} dose${n === 1 ? '' : 's'}${np ? ` (${pepNames.join(', ')})` : ''}${face ? `, mood ${face[2]}` : ''}`;
+    // one dot per peptide taken that day, up to 6, then "+"
+    const dots = np ? `<span class="cal-dots" aria-hidden="true">${'<i></i>'.repeat(Math.min(np, 6))}${np > 6 ? '<b>+</b>' : ''}</span>` : '';
     html += `<button type="button" class="cal-day${k === today ? ' today' : ''}${k === state.calDay ? ' sel' : ''}${k > today ? ' future' : ''}" data-day="${k}" aria-label="${esc(label)}" aria-pressed="${k === state.calDay}">
       <span class="cal-num">${d}</span>
       <span class="cal-mood" aria-hidden="true">${face ? face[1] : ''}</span>
-      ${n ? `<span class="cal-count" aria-hidden="true">${n}</span>` : ''}
+      ${dots}
     </button>`;
   }
   $('calGrid').innerHTML = html;
@@ -199,19 +226,22 @@ function renderProgress() {
   document.querySelectorAll('#progRange button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.days === state.progRange)));
   const wu = state.units.weight, cu = state.units.waist;
   const today = todayKey();
+  noteWeightsFor = null;
+  weightOn(today, wu); // builds noteWeights
   const retaDays = {};
   for (const e of state.entries) if (isReta(e.peptideId)) (retaDays[dayKey(e.takenAt)] ||= []).push(e);
   const ck = Object.fromEntries(state.checkins.map((c) => [c.id, c]));
   let start;
   if (state.progRange) start = shiftDay(today, -(state.progRange - 1));
   else {
-    const keys = [...Object.keys(retaDays), ...state.checkins.filter((c) => c.weight != null || c.sleep || c.energy || c.mood).map((c) => c.id)].sort();
+    const keys = [...Object.keys(retaDays), ...Object.keys(noteWeights), ...state.checkins.filter((c) => c.weight != null || c.sleep || c.energy || c.mood).map((c) => c.id)].sort();
     start = keys[0] && keys[0] < today ? keys[0] : shiftDay(today, -29);
   }
   const days = [];
   for (let k = start; k <= today; k = shiftDay(k, 1)) days.push(k);
 
-  const weights = days.map((k) => ({ k, v: ck[k] ? weightIn(ck[k], wu) : null })).filter((d) => d.v != null);
+  const wOn = Object.fromEntries(days.map((k) => [k, weightOn(k, wu)]));
+  const weights = days.map((k) => ({ k, v: wOn[k]?.v ?? null })).filter((d) => d.v != null);
   const waists = days.map((k) => ({ k, v: ck[k] ? waistIn(ck[k], cu) : null })).filter((d) => d.v != null);
   $('progTiles').innerHTML = statTile('Weight', wu, weights) + statTile('Waist', cu, waists);
 
@@ -224,12 +254,12 @@ function renderProgress() {
     const lo = Math.min(...vs), hi = Math.max(...vs), pad = Math.max(0.5, (hi - lo) * 0.15);
     lineChart($('weightChart'), {
       label: `Weight in ${wu} over ${days.length} days, with Reta dose days marked underneath`,
-      days: days.map((k) => ({ k, values: { w: ck[k] ? weightIn(ck[k], wu) : null }, mark: !!retaDays[k] })),
+      days: days.map((k) => ({ k, values: { w: wOn[k]?.v ?? null }, mark: !!retaDays[k] })),
       series: [{ key: 'w', label: `Weight (${wu})`, color: 'var(--s1)' }],
       yTicks: niceTicks(lo - pad, hi + pad), yFmt: (t) => fmtNum(t),
       markLabel: 'Reta dose', markColor: 'var(--s2)',
       tip: (d) => ({ title: dayLabel(d.k), rows: [
-        ...(d.values.w != null ? [{ label: `weight (${wu})`, value: fmtAmt(d.values.w), color: 'var(--s1)' }] : []),
+        ...(d.values.w != null ? [{ label: `weight (${wu})${wOn[d.k]?.src === 'notes' ? ', from dose notes' : ''}`, value: fmtAmt(d.values.w), color: 'var(--s1)' }] : []),
         ...(d.mark ? [{ label: 'Reta', value: retaText(d.k), color: 'var(--s2)', mark: true }] : [])
       ] })
     });
@@ -251,10 +281,10 @@ function renderProgress() {
   }
 
   // the same numbers as a table, newest first
-  const rows = days.slice().reverse().filter((k) => ck[k] || retaDays[k]).map((k) => {
+  const rows = days.slice().reverse().filter((k) => ck[k] || retaDays[k] || wOn[k]).map((k) => {
     const c = ck[k] || {};
     const cell = (v) => `<td>${v == null || v === '' ? '' : esc(v)}</td>`;
-    return `<tr><th scope="row">${esc(shortDate(k))}</th>${cell(c.weight != null ? fmtAmt(weightIn(c, wu)) : null)}${cell(c.waist != null ? fmtAmt(waistIn(c, cu)) : null)}${cell(retaDays[k] ? retaText(k) : null)}${cell(c.sleep)}${cell(c.energy)}${cell(c.mood)}</tr>`;
+    return `<tr><th scope="row">${esc(shortDate(k))}</th>${cell(wOn[k] ? fmtAmt(wOn[k].v) : null)}${cell(c.waist != null ? fmtAmt(waistIn(c, cu)) : null)}${cell(retaDays[k] ? retaText(k) : null)}${cell(c.sleep)}${cell(c.energy)}${cell(c.mood)}</tr>`;
   });
   $('progTable').innerHTML = rows.length
     ? `<table><thead><tr><th scope="col">Day</th><th scope="col">Weight (${esc(wu)})</th><th scope="col">Waist (${esc(cu)})</th><th scope="col">Reta</th><th scope="col">Sleep</th><th scope="col">Energy</th><th scope="col">Mood</th></tr></thead><tbody>${rows.join('')}</tbody></table>`

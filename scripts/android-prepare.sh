@@ -8,7 +8,7 @@ BG='#0f766e'
 # Only the app files go into the APK.
 rm -rf www android
 mkdir -p www
-cp index.html styles.css seed.js db.js app.js vials.js feel.js history-views.js sw.js manifest.webmanifest www/
+cp index.html styles.css seed.js db.js app.js vials.js feel.js history-views.js schedule.js calc.js library.js info.js backup.js sw.js manifest.webmanifest www/
 cp -r icons www/
 # Capacitor's JS runtime delivers native events (e.g. the back button) to the page. APK only.
 cp node_modules/@capacitor/core/dist/capacitor.js www/
@@ -30,6 +30,13 @@ for spec in mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432;
   convert icons/icon-512.png -resize "${px}x${px}" "$RES/mipmap-$dpi/ic_launcher.png"
   convert icons/icon-512-maskable.png -resize "${px}x${px}" \( -size "${px}x${px}" xc:none -fill white -draw "circle $((px/2)),$((px/2)) $((px/2)),0" \) -compose DstIn -composite "$RES/mipmap-$dpi/ic_launcher_round.png"
   convert icons/icon-512-maskable.png -resize "$((fg*80/100))x$((fg*80/100))" -background "$BG" -gravity center -extent "${fg}x${fg}" "$RES/mipmap-$dpi/ic_launcher_foreground.png"
+done
+# Notification icon: Android wants a white silhouette on transparent (the vial, with the teal removed).
+for spec in mdpi:24 hdpi:36 xhdpi:48 xxhdpi:72 xxxhdpi:96; do
+  IFS=: read -r dpi px <<<"$spec"
+  mkdir -p "$RES/drawable-$dpi"
+  convert icons/icon-512-maskable.png -fuzz 25% -transparent "$BG" -alpha extract -background white -alpha shape -trim +repage \
+    -resize "$((px*80/100))x$((px*80/100))" -gravity center -background none -extent "${px}x${px}" "$RES/drawable-$dpi/ic_stat_dose.png"
 done
 cat > "$RES/values/ic_launcher_background.xml" <<EOF
 <?xml version="1.0" encoding="utf-8"?>

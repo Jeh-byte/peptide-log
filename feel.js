@@ -45,13 +45,16 @@ function renderToday() {
   const k = feelDay();
   $('todayLabel').textContent = dayLabel(k);
   $('dayNext').disabled = k >= todayKey();
+  renderChecklist();
   const names = Object.fromEntries(state.peptides.map((p) => [p.id, p.name]));
-  const doses = state.entries.filter((e) => dayKey(e.takenAt) === k).sort((a, b) => a.takenAt.localeCompare(b.takenAt));
+  const ticked = new Set(($('checklist').due || []).map((d) => d.entry?.id).filter(Boolean));
+  const doses = state.entries.filter((e) => dayKey(e.takenAt) === k && !ticked.has(e.id)).sort((a, b) => a.takenAt.localeCompare(b.takenAt));
+  $('otherHead').textContent = ticked.size || !$('checkWrap').hidden ? 'Also logged' : 'Logged';
   $('todayDoses').innerHTML = doses.length
     ? doses.map((e) => `<button type="button" class="card compact" data-id="${esc(e.id)}">
         <div class="line1"><span>${esc(names[e.peptideId] || e.peptideName)}</span><span class="time">${esc(timeStr(e.takenAt))}</span></div>
         <div class="line2">${esc(entrySummary(e))}</div></button>`).join('')
-    : `<p class="subtle-p">No doses logged on this day.</p>`;
+    : `<p class="subtle-p">${$('checkWrap').hidden ? 'No doses logged on this day.' : 'Nothing else logged on this day.'}</p>`;
   renderFeel();
 }
 $('todayDoses').addEventListener('click', (e) => { const c = e.target.closest('.card'); if (c) editEntry(c.dataset.id); });

@@ -27,15 +27,17 @@ adb shell pidof "$PKG" >/dev/null || fail "app is not running after launch"
 focused || fail "app is not in the foreground after launch"
 
 # WebView content only shows up in the UI dump when an accessibility service is on, so fall back to
-# tapping the middle tab by position: the tab bar sits at the bottom of the WebView, ~64 CSS px tall.
-tap_middle_tab() {
+# tapping a tab by position: the bar sits at the bottom of the WebView, ~64 CSS px tall, 5 equal tabs
+# (Log, History, Calc, Peptides, Info).
+TABS=5
+tap_tab() {
   b=$(grep -oE 'class="android.webkit.WebView"[^>]*bounds="\[[0-9]+,[0-9]+\]\[[0-9]+,[0-9]+\]"' "$OUT/ui-History.xml" | head -1 | grep -oE '[0-9]+' | tail -4 | tr '\n' ' ')
   [ -n "$b" ] || return 1
   read -r x1 y1 x2 y2 <<<"$b"
   dpi=$(adb shell wm density | grep -oE '[0-9]+' | tail -1)
-  adb shell input tap $(( (x1 + x2) / 2 )) $(( y2 - 32 * dpi / 160 ))
+  adb shell input tap $(( x1 + (x2 - x1) * (2 * $1 + 1) / (2 * TABS) )) $(( y2 - 32 * dpi / 160 ))
 }
-tap_text "History" || tap_middle_tab || fail "could not find the History tab on screen"
+tap_text "History" || tap_tab 1 || fail "could not find the History tab on screen"
 sleep 3
 shot 2-history
 
@@ -43,6 +45,12 @@ adb shell input keyevent KEYCODE_BACK
 sleep 3
 shot 3-after-back
 focused || fail "Back from History closed the app instead of returning to Log"
+
+tap_tab 2; sleep 3; shot 4-calc
+tap_tab 4; sleep 3; shot 5-info
+adb shell input keyevent KEYCODE_BACK
+sleep 3
+focused || fail "Back from Info closed the app instead of returning to Log"
 
 adb shell input keyevent KEYCODE_BACK
 sleep 3

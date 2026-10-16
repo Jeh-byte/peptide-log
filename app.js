@@ -1,4 +1,4 @@
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 const SITES = ['Abdomen L', 'Abdomen R', 'Thigh L', 'Thigh R', 'Arm L', 'Arm R', 'Glute L', 'Glute R', 'Nasal', 'Oral', 'Topical', 'Other'];
 const ADD_NEW = '__add__';
 // Set when running inside the Android APK (Capacitor), not in Chrome.
@@ -10,7 +10,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const num = (v) => (v === '' || v == null || isNaN(+v) ? null : +v);
 const fmtNum = (n) => (n == null ? '' : String(+(+n).toFixed(4)));
 
-const state = { peptides: [], supplies: [], entries: [], vials: [], checkins: [], units: { weight: 'kg', waist: 'cm' }, feelDay: null, editingId: null, site: '' };
+const state = { peptides: [], supplies: [], entries: [], vials: [], checkins: [], schedules: [], units: { weight: 'kg', waist: 'cm' }, reminders: false, lastBackup: null, feelDay: null, editingId: null, site: '' };
 
 // ---------- helpers ----------
 function toLocalInput(d) {
@@ -48,12 +48,21 @@ function entrySummary(e) {
   return parts.join(' · ');
 }
 let toastTimer;
-function toast(msg) {
+// action: optional {label, fn} shown as a button in the toast (e.g. Undo); the toast stays up longer.
+function toast(msg, action) {
   const t = $('toast');
-  t.textContent = msg;
+  t.replaceChildren(document.createTextNode(msg));
+  t.classList.toggle('has-action', !!action);
+  if (action) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = action.label;
+    b.onclick = () => { t.classList.remove('show'); action.fn(); };
+    t.append(b);
+  }
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  toastTimer = setTimeout(() => t.classList.remove('show'), action ? 6000 : 2200);
 }
 const byName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
 const activePeptides = () => state.peptides.filter((p) => !p.archived).sort(byName);
@@ -61,14 +70,15 @@ const lastEntryFor = (pid) => state.entries.filter((e) => e.peptideId === pid).s
 
 async function load() {
   let units;
-  [state.peptides, state.supplies, state.entries, state.vials, state.checkins, units] = await Promise.all([
-    DB.all('peptides'), DB.all('supplies'), DB.all('entries'), DB.all('vials'), DB.all('checkins'), DB.getMeta('units')
+  [state.peptides, state.supplies, state.entries, state.vials, state.checkins, state.schedules, units, state.reminders, state.lastBackup] = await Promise.all([
+    DB.all('peptides'), DB.all('supplies'), DB.all('entries'), DB.all('vials'), DB.all('checkins'), DB.all('schedules'),
+    DB.getMeta('units'), DB.getMeta('reminders'), DB.getMeta('lastBackup')
   ]);
   if (units) state.units = { ...state.units, ...units };
 }
 
 // ---------- tabs ----------
-const TITLES = { log: 'Log a dose', history: 'History', peptides: 'Peptides' };
+const TITLES = { log: 'Peptide Log', history: 'History', calc: 'Calculator', peptides: 'Peptides', info: 'Info' };
 function show(view) {
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${view}`));
   document.querySelectorAll('.tabs button').forEach((b) => {
@@ -78,7 +88,9 @@ function show(view) {
   $('title').textContent = view === 'log' && state.editingId ? 'Edit dose' : TITLES[view];
   if (view === 'log') { renderAlerts(); renderToday(); }
   if (view === 'history') renderHistory();
-  if (view === 'peptides') renderPeptides();
+  if (view === 'peptides') { renderPeptides(); renderSchedules(); }
+  if (view === 'calc') { renderCalcPeptides(); renderCalc(); }
+  if (view === 'info') renderInfo();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => show(b.dataset.view)));
@@ -151,6 +163,8 @@ function resetForm(keepPeptide = true) {
   const pid = keepPeptide ? $('fPeptide').value : '';
   state.editingId = null;
   state.site = '';
+  state.volManual = false;
+  $('autoHint').hidden = true;
   $('logForm').reset();
   renderPeptideSelect(pid);
   $('fWhen').value = toLocalInput(new Date());
@@ -175,6 +189,8 @@ function editEntry(id) {
   $('fDoseUnit').value = e.doseUnit || 'mcg';
   $('fVolume').value = fmtNum(e.volume);
   $('fVolumeUnit').value = e.volumeUnit || 'mL';
+  state.volManual = e.volume != null; // keep the volume that was logged
+  $('autoHint').hidden = true;
   $('fWhen').value = toLocalInput(new Date(e.takenAt));
   $('fNotes').value = e.notes || '';
   if (e.site && !SITES.includes(e.site)) { state.site = 'Other'; $('fSiteOther').value = e.site; }
@@ -186,6 +202,7 @@ function editEntry(id) {
   renderVolHint();
   onPeptideChosen();
   show('log');
+  $('logForm').scrollIntoView();
 }
 
 $('logForm').addEventListener('submit', async (ev) => {
@@ -305,9 +322,12 @@ function renderPeptides() {
     const last = lastEntryFor(p.id);
     const meta = [vialText(p), count ? `${count} dose${count === 1 ? '' : 's'} logged` : 'no doses yet', last ? `last ${ago(last.takenAt)}` : ''].filter(Boolean).join(' · ');
     const v = activeVial(p.id), s = v && vialStatus(v);
+    const mix = mixFor(p.id), cyc = cycleText(p);
     return `<button class="card${p.archived ? ' archived' : ''}" data-id="${esc(p.id)}">
-      <div class="line1"><span>${esc(p.name)}</span>${p.archived ? '<span class="time">archived</span>' : ''}</div>
+      <div class="line1"><span>${esc(p.name)}</span>${p.archived ? '<span class="time">archived</span>' : cyc ? `<span class="cycle-tag${cycleAt(p, todayKey())?.on ? ' on' : ''}">${esc(cyc.split(' · ')[0].split(',')[0])}</span>` : ''}</div>
       <div class="line2">${esc(meta)}</div>
+      ${mix ? `<div class="line2">${esc(strengthText(mix))}</div>` : ''}
+      ${cyc ? `<div class="line2">${esc(cyc)}</div>` : ''}
       ${v ? `<div class="vial-line">${esc(vialLine(v, s))}</div>${meterHTML(s)}` : ''}
       ${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ''}
     </button>`;
@@ -334,7 +354,12 @@ function openPeptideDialog(p, done) {
   $('pAmount').value = fmtNum(p?.vialAmount);
   $('pUnit').value = p?.vialUnit || 'mg';
   $('pCount').value = p ? (p.vialCount ?? '') : 1;
+  $('pWater').value = fmtNum(p?.bacWaterMl);
   $('pNotes').value = p?.notes || '';
+  $('pProtocol').value = p?.protocol || '';
+  $('pCycleOn').value = fmtNum(p?.cycleOnWeeks);
+  $('pCycleOff').value = fmtNum(p?.cycleOffWeeks);
+  $('pCycleStart').value = p?.cycleStart || '';
   $('pArchived').checked = !!p?.archived;
   $('pArchivedWrap').hidden = !p;
   $('pVialWrap').hidden = !p;
@@ -355,7 +380,12 @@ $('pepDialog').addEventListener('close', async () => {
     vialAmount: num($('pAmount').value),
     vialUnit: $('pUnit').value,
     vialCount: num($('pCount').value),
+    bacWaterMl: num($('pWater').value),
     notes: $('pNotes').value.trim(),
+    protocol: $('pProtocol').value.trim(),
+    cycleOnWeeks: num($('pCycleOn').value),
+    cycleOffWeeks: num($('pCycleOff').value),
+    cycleStart: $('pCycleOn').value ? ($('pCycleStart').value || todayKey()) : null,
     archived: pepEditing ? $('pArchived').checked : false
   });
   const i = state.peptides.findIndex((x) => x.id === rec.id);
@@ -363,6 +393,8 @@ $('pepDialog').addEventListener('close', async () => {
   // keep old history entries showing the current name
   toast(pepEditing ? 'Peptide updated' : `Added ${rec.name}`);
   renderPeptideSelect();
+  renderToday();
+  syncReminders();
   pepDone?.(rec);
 });
 $('pepDialog').addEventListener('cancel', () => { $('pepDialog').returnValue = 'cancel'; });
@@ -406,8 +438,9 @@ $('settingsBtn').addEventListener('click', async () => {
     <p><strong>${state.entries.length}</strong> doses logged · <strong>${state.peptides.length}</strong> peptides</p>
     <p>Storage: ${esc(persisted)}${usage ? ` · ${esc(usage)}` : ''}</p>
     ${NATIVE ? '' : `<p>${installed ? 'Running as an installed app.' : 'Tip: install from Chrome’s menu (⋮ → Add to Home screen / Install app) so it opens like a normal app and works offline.'}</p>`}
-    <p class="subtle">${NATIVE ? 'Installing a newer version keeps your log. Uninstalling the app or clearing its storage deletes it.' : 'Clearing Chrome’s site data or uninstalling the app deletes your log.'} Export and backup is coming in a later update.</p>
+    <p class="subtle">${NATIVE ? 'Installing a newer version keeps your log. Uninstalling the app or clearing its storage deletes it, so keep a backup.' : 'Clearing Chrome’s site data or uninstalling the app deletes your log, so keep a backup.'}</p>
     <p style="color:var(--muted);font-size:13px">Version ${esc(version)}</p>`;
+  renderBackupInfo();
   $('setDialog').showModal();
 });
 
@@ -426,6 +459,7 @@ $('importFile').addEventListener('change', async () => {
   if (!file) return;
   let data;
   try { data = JSON.parse(await file.text()); } catch { toast('That file isn’t an import file'); return; }
+  if (data?.format === 'peptide-log-backup') { openRestore(data); return; }
   const rows = Array.isArray(data) ? data : data?.entries;
   if (!Array.isArray(rows) || !rows.length) { toast('No entries found in that file'); return; }
 
@@ -493,11 +527,13 @@ $('impDialog').addEventListener('close', async () => {
   try {
     await DB.seedIfEmpty();
     await load();
+    await seedSetup();
   } catch (err) {
     document.querySelector('main').innerHTML = `<div class="empty">Could not open storage on this device.<br>${esc(err?.message || err)}</div>`;
     return;
   }
   resetForm(false);
+  syncReminders();
   // The APK already has every file on the phone; a cache would only serve stale files after an update.
   if (!NATIVE && 'serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

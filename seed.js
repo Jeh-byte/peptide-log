@@ -25,3 +25,32 @@ window.SEED_PEPTIDES = [
 window.SEED_SUPPLIES = [
   { name: 'Bacteriostatic water', amount: 10, unit: 'mL', count: 2 }
 ];
+
+// Bac water per vial (mL), worked out from Jeh's stated doses: GHK-Cu 2.5 mg = 5 units (100 mg vial),
+// KPV 500 mcg = 10 units and SS-31 2 mg = 40 units (10 mg vials) all mean 2 mL. Applied once to
+// peptides that have no bac water set yet, on new and existing installs.
+window.SEED_MIX = { 'GHK-Cu': 2, 'KPV': 2, 'SS-31': 2 };
+
+// Schedules from Jeh's messages (16 Oct 2026). Applied once. Peptides are matched by name; an item
+// with no dose takes the last logged dose of that peptide, or opens the log form when tapped.
+// Times and the Reta dose were guesses in the message, and are editable under Peptides > Schedule.
+window.SEED_SCHEDULES = [
+  { name: 'Every morning', rule: 'daily', startDate: '2026-10-16', items: [
+    { peptide: 'GHK-Cu', dose: 2.5, doseUnit: 'mg', volume: 5, volumeUnit: 'units', time: '08:00' },
+    { peptide: 'KPV', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '08:00' }
+  ] },
+  { name: 'Semax / Selank', rule: 'rotate', blockDays: 28, startDate: '2026-10-16', items: [
+    { peptide: 'Selank', time: '08:00' },
+    { peptide: 'Semax', time: '08:00' }
+  ] },
+  { name: 'Every night', rule: 'daily', startDate: '2026-10-16', items: [
+    { peptide: 'SS-31', dose: 2, doseUnit: 'mg', volume: 40, volumeUnit: 'units', time: '21:00' }
+  ] },
+  { name: 'Alternating days', rule: 'rotate', blockDays: 1, startDate: '2026-10-16', items: [
+    { peptide: 'MOTS-c', dose: 5, doseUnit: 'mg', time: '18:00' },
+    { peptide: 'Glutathione', dose: 200, doseUnit: 'mg', time: '18:00' }
+  ] },
+  { name: 'Retatrutide', rule: 'every', every: 6, startDate: '2026-10-17', items: [
+    { peptide: 'Retatrutide', dose: 3, doseUnit: 'mg', time: '10:00' }
+  ] }
+];

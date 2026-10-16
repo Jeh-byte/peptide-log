@@ -2,5 +2,11 @@
   "appId": "io.github.jehbyte.peptidelog",
   "appName": "Peptide Log",
   "webDir": "www",
-  "loggingBehavior": "production"
+  "loggingBehavior": "production",
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_dose",
+      "iconColor": "#0f766e"
+    }
+  }
 }

@@ -22,7 +22,41 @@
   <main>
     <!-- LOG -->
     <section id="view-log" class="view active">
-      <div id="alerts" class="alerts" role="region" aria-label="Vial warnings" hidden></div>
+      <div id="alerts" class="alerts" role="region" aria-label="Warnings" hidden></div>
+
+      <section class="today" id="todaySec" aria-labelledby="todayLabel">
+        <div class="today-h">
+          <button type="button" class="icon-btn nav-btn" id="dayPrev" aria-label="Previous day">‹</button>
+          <h2 id="todayLabel">Today</h2>
+          <button type="button" class="icon-btn nav-btn" id="dayNext" aria-label="Next day">›</button>
+        </div>
+        <div id="checkWrap" hidden>
+          <div id="checklist" class="checklist" role="group" aria-label="Scheduled doses"></div>
+        </div>
+        <h3 class="sub-h" id="otherHead">Logged</h3>
+        <div id="todayDoses"></div>
+
+        <div class="feel-card">
+          <h3>How I feel</h3>
+          <div id="feelFaces"></div>
+          <div class="field">
+            <span>Side effects</span>
+            <div class="chips" id="sideChips"></div>
+            <input id="sideOther" type="text" placeholder="Anything else" aria-label="Other side effects" autocomplete="off">
+          </div>
+          <div class="row">
+            <label class="field grow"><span>Weight</span><input id="fWeight" type="number" inputmode="decimal" step="any" min="0"></label>
+            <label class="field unit"><span>&nbsp;</span><select id="fWeightUnit" aria-label="Weight unit"><option>kg</option><option>lb</option></select></label>
+          </div>
+          <div class="row">
+            <label class="field grow"><span>Waist</span><input id="fWaist" type="number" inputmode="decimal" step="any" min="0"></label>
+            <label class="field unit"><span>&nbsp;</span><select id="fWaistUnit" aria-label="Waist unit"><option>cm</option><option value="in">inches</option></select></label>
+          </div>
+          <div class="saved" id="feelSaved" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <h2 class="form-h">Log a dose</h2>
       <form id="logForm" autocomplete="off">
         <div class="edit-banner" id="editBanner" hidden>Editing an earlier entry</div>
 
@@ -54,6 +88,7 @@
             <select id="fVolumeUnit"><option value="mL">mL</option><option value="units">units</option></select>
           </label>
         </div>
+        <div class="hint subtle" id="autoHint" hidden></div>
         <div class="hint subtle" id="volHint"></div>
 
         <div class="row">
@@ -81,34 +116,6 @@
           <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
         </div>
       </form>
-
-      <section class="today" id="todaySec" aria-labelledby="todayLabel">
-        <div class="today-h">
-          <button type="button" class="icon-btn nav-btn" id="dayPrev" aria-label="Previous day">‹</button>
-          <h2 id="todayLabel">Today</h2>
-          <button type="button" class="icon-btn nav-btn" id="dayNext" aria-label="Next day">›</button>
-        </div>
-        <div id="todayDoses"></div>
-
-        <div class="feel-card">
-          <h3>How I feel</h3>
-          <div id="feelFaces"></div>
-          <div class="field">
-            <span>Side effects</span>
-            <div class="chips" id="sideChips"></div>
-            <input id="sideOther" type="text" placeholder="Anything else" aria-label="Other side effects" autocomplete="off">
-          </div>
-          <div class="row">
-            <label class="field grow"><span>Weight</span><input id="fWeight" type="number" inputmode="decimal" step="any" min="0"></label>
-            <label class="field unit"><span>&nbsp;</span><select id="fWeightUnit" aria-label="Weight unit"><option>kg</option><option>lb</option></select></label>
-          </div>
-          <div class="row">
-            <label class="field grow"><span>Waist</span><input id="fWaist" type="number" inputmode="decimal" step="any" min="0"></label>
-            <label class="field unit"><span>&nbsp;</span><select id="fWaistUnit" aria-label="Waist unit"><option>cm</option><option value="in">inches</option></select></label>
-          </div>
-          <div class="saved" id="feelSaved" aria-live="polite"></div>
-        </div>
-      </section>
     </section>
 
     <!-- HISTORY -->
@@ -135,7 +142,7 @@
           <button type="button" class="icon-btn nav-btn" id="calNext" aria-label="Next month">›</button>
         </div>
         <div class="cal-grid" id="calGrid"></div>
-        <p class="cal-key subtle-p"><span class="cal-count" aria-hidden="true">2</span> doses that day · face = mood</p>
+        <p class="cal-key subtle-p"><span class="cal-dots" aria-hidden="true"><i></i><i></i></span> one dot per peptide taken · face = mood</p>
         <div id="calDetail"></div>
       </div>
 
@@ -164,13 +171,73 @@
       </div>
     </section>
 
+    <!-- CALC -->
+    <section id="view-calc" class="view">
+      <label class="field"><span>Peptide</span><select id="cPep"></select></label>
+      <div class="row">
+        <label class="field grow"><span>Peptide in the vial</span><input id="cAmount" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 10"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="cUnit" aria-label="Vial unit"><option>mg</option><option>mcg</option></select></label>
+      </div>
+      <label class="field"><span>Bac water added (mL)</span><input id="cWater" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 2"></label>
+      <div class="row">
+        <label class="field grow"><span>Your dose</span><input id="cDose" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 250"></label>
+        <label class="field unit"><span>&nbsp;</span><select id="cDoseUnit" aria-label="Dose unit"><option>mcg</option><option>mg</option></select></label>
+      </div>
+      <div class="field">
+        <span>Syringe</span>
+        <div class="seg small" id="cSyringe" role="group" aria-label="Syringe size">
+          <button type="button" data-cap="30" aria-pressed="false">0.3 mL</button>
+          <button type="button" data-cap="50" aria-pressed="false">0.5 mL</button>
+          <button type="button" data-cap="100" aria-pressed="true">1 mL</button>
+        </div>
+      </div>
+      <div class="calc-out" aria-live="polite">
+        <div class="calc-big"><span id="cUnits">–</span> <span class="calc-unit">units</span></div>
+        <div class="calc-ml" id="cMl"></div>
+        <div id="cSyr" class="syringe"></div>
+        <p id="cDoses"></p>
+        <p class="subtle-p" id="cStrength"></p>
+        <p class="calc-warn" id="cWarn" hidden></p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" id="cLog">Log this dose</button>
+        <button type="button" class="btn ghost" id="cSave">Save this mix</button>
+      </div>
+      <p class="subtle-p">“Save this mix” stores the vial amount and bac water on the peptide (and its current vial), so the Log screen fills in units for you.</p>
+    </section>
+
     <!-- PEPTIDES -->
     <section id="view-peptides" class="view">
       <button class="btn primary block" id="addPeptideBtn">+ Add peptide</button>
       <div id="pepList"></div>
+      <h2 class="section-h">Schedule</h2>
+      <div id="schList"></div>
+      <button class="btn ghost block" id="addSchBtn">+ Add schedule</button>
+      <label class="toggle"><input type="checkbox" id="remindersOn"> Phone reminders when a dose is due</label>
+      <p class="subtle-p" id="remindersNote"></p>
       <h2 class="section-h">Mixing supplies</h2>
       <div id="supplyList"></div>
       <label class="toggle"><input type="checkbox" id="showArchived"> Show archived peptides</label>
+    </section>
+
+    <!-- INFO -->
+    <section id="view-info" class="view">
+      <a class="robot-link" id="robotLink" href="https://peptiderobot.com" target="_blank" rel="noopener">
+        <strong>Peptide Robot</strong><span>Ask questions about peptides at peptiderobot.com ↗</span>
+      </a>
+      <div class="seg" id="infoModes" role="group" aria-label="Info section">
+        <button type="button" data-mode="mine" aria-pressed="true">My peptides</button>
+        <button type="button" data-mode="library" aria-pressed="false">Library</button>
+        <button type="button" data-mode="guides" aria-pressed="false">Guides</button>
+      </div>
+      <div id="info-mine"></div>
+      <div id="info-library" hidden>
+        <input id="libSearch" type="search" placeholder="Search the library" aria-label="Search the library">
+        <div class="chips lib-cats" id="libCats"></div>
+        <div id="libList"></div>
+      </div>
+      <div id="info-guides" hidden></div>
+      <p class="disclaimer">General information only, not medical advice. Most peptides here are not approved medicines. Talk to a doctor before starting, stopping or changing anything.</p>
     </section>
   </main>
 
@@ -181,8 +248,14 @@
     <button data-view="history">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.05-4.95L15 10h7V3l-2.64 2.64A8.97 8.97 0 0 0 13 3Zm-1 5v5l4 2.4.8-1.3-3.3-2V8z"/></svg>History
     </button>
+    <button data-view="calc">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 2v4h10V4zm0 6v2h2v-2zm4 0v2h2v-2zm4 0v6h2v-6zm-8 4v2h2v-2zm4 0v2h2v-2zm-4 4v2h2v-2zm4 0v2h2v-2zm4 0v2h2v-2z"/></svg>Calc
+    </button>
     <button data-view="peptides">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 2h6v2h-1v2.1a2 2 0 0 1 2 1.9v12a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-1.9V4H9zm1 10v8h4v-8z"/></svg>Peptides
+    </button>
+    <button data-view="info">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20Zm0 2a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm-1 6h2v7h-2zm0-3h2v2h-2z"/></svg>Info
     </button>
   </nav>
 
@@ -195,7 +268,19 @@
         <label class="field grow"><span>Amount per vial</span><input id="pAmount" type="number" inputmode="decimal" step="any" min="0"></label>
         <label class="field unit"><span>&nbsp;</span><select id="pUnit"><option>mg</option><option>mcg</option><option>IU</option><option>mL</option></select></label>
       </div>
-      <label class="field"><span>Vials on hand</span><input id="pCount" type="number" inputmode="numeric" step="1" min="0" value="1"></label>
+      <div class="row">
+        <label class="field grow"><span>Bac water added (mL)</span><input id="pWater" type="number" inputmode="decimal" step="any" min="0" placeholder="e.g. 2"></label>
+        <label class="field grow"><span>Vials on hand</span><input id="pCount" type="number" inputmode="numeric" step="1" min="0" value="1"></label>
+      </div>
+      <fieldset class="field cycle">
+        <legend>Cycle (optional)</legend>
+        <div class="row">
+          <label class="field grow"><span>Weeks on</span><input id="pCycleOn" type="number" inputmode="numeric" step="1" min="0" placeholder="e.g. 4"></label>
+          <label class="field grow"><span>Weeks off</span><input id="pCycleOff" type="number" inputmode="numeric" step="1" min="0" placeholder="e.g. 4"></label>
+        </div>
+        <label class="field"><span>Cycle started</span><input id="pCycleStart" type="date"></label>
+      </fieldset>
+      <label class="field"><span>My protocol</span><textarea id="pProtocol" rows="2" placeholder="e.g. 500 mcg mornings, 5 days on, 2 off"></textarea></label>
       <label class="field"><span>Notes</span><textarea id="pNotes" rows="2"></textarea></label>
       <div class="vial-box" id="pVialWrap" hidden>
         <p id="pVialText"></p>
@@ -204,6 +289,49 @@
       <label class="toggle" id="pArchivedWrap"><input type="checkbox" id="pArchived"> Archived (hide from the log list)</label>
       <div class="actions">
         <button class="btn primary" value="save" id="pSave">Save</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Schedule editor -->
+  <dialog id="schDialog">
+    <form method="dialog">
+      <h2 id="schTitle">Schedule</h2>
+      <label class="field"><span>Name</span><input id="schName" placeholder="e.g. Every morning"></label>
+      <label class="field"><span>How often</span>
+        <select id="schRule">
+          <option value="daily">Every day</option>
+          <option value="every">Every few days</option>
+          <option value="rotate">Take turns (one peptide at a time)</option>
+        </select>
+      </label>
+      <label class="field" id="schEveryWrap"><span>Every how many days</span><input id="schEvery" type="number" inputmode="numeric" step="1" min="1"></label>
+      <label class="field" id="schBlockWrap"><span>Days on each before switching</span><input id="schBlock" type="number" inputmode="numeric" step="1" min="1"></label>
+      <p class="subtle-p" id="schRuleHint"></p>
+      <label class="field"><span>Starting</span><input id="schStart" type="date" required></label>
+      <div id="schItems"></div>
+      <button type="button" class="btn ghost small" id="schAddItem">+ Add a peptide</button>
+      <label class="toggle"><input type="checkbox" id="schActive" checked> Active</label>
+      <div class="vial-box" id="schCal" hidden>
+        <p>Calendar reminders (instead of, or as well as, phone reminders):</p>
+        <div class="cal-btns" id="schCalBtns"></div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" value="save">Save</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+      <button type="button" class="btn danger block vial-empty" id="schDelete" hidden>Delete schedule</button>
+    </form>
+  </dialog>
+
+  <!-- Restore from backup -->
+  <dialog id="restoreDialog">
+    <form method="dialog">
+      <h2>Restore from backup</h2>
+      <div id="restoreBody"></div>
+      <div class="actions">
+        <button class="btn primary" value="restore" id="restoreConfirm">Restore</button>
         <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
       </div>
     </form>
@@ -252,6 +380,14 @@
     <form method="dialog">
       <h2>About this app</h2>
       <div id="setBody"></div>
+      <h2 class="section-h">Backup and export</h2>
+      <p class="subtle-p" id="backupInfo"></p>
+      <button type="button" class="btn primary block" id="backupBtn">Back up now</button>
+      <button type="button" class="btn ghost block" id="restoreBtn">Restore from a backup file</button>
+      <div class="row export-row">
+        <button type="button" class="btn ghost grow" id="exportDosesBtn">Doses spreadsheet</button>
+        <button type="button" class="btn ghost grow" id="exportFeelBtn">How I feel spreadsheet</button>
+      </div>
       <h2 class="section-h">Import entries</h2>
       <p class="subtle-p">Add entries from an import file, such as one Claude made from photos of your written logs.</p>
       <!-- No accept filter: Android's picker greys out .json files that apps label as a generic type. The contents are checked instead. -->
@@ -281,5 +417,10 @@
   <script src="vials.js"></script>
   <script src="feel.js"></script>
   <script src="history-views.js"></script>
+  <script src="schedule.js"></script>
+  <script src="calc.js"></script>
+  <script src="library.js"></script>
+  <script src="info.js"></script>
+  <script src="backup.js"></script>
 </body>
 </html>

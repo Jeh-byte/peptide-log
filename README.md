@@ -34,5 +34,13 @@ Settings > Choose import file. JSON: `{"format":"peptide-log-import","version":1
 - **How I feel:** one check-in per day (`checkins` store) under Today on the Log screen; ‹ › moves between days. Saves on every tap and 0.6 s after typing.
 - **History:** List, Calendar (doses per day and mood) and Progress (weight with Reta days marked, sleep/energy/mood, table view). "Reta" is any peptide whose name contains "reta".
 
+## Schedules, Calc, Info, backup (v1.3)
+- **Today checklist** (`schedule.js`): schedules are every day, every N days, or take turns (one peptide at a time, N days each; 1 = alternate days). Tapping a due dose logs it with the usual dose and units (Undo in the toast); tapping a ticked one opens it for editing. A peptide in an off week of its cycle is left off. Jeh's five schedules are seeded once from `seed.js`.
+- **Reminders:** in the APK, Peptides > "Phone reminders" schedules local notifications for the next 21 days (topped up on every open). Each schedule also has Add to Google Calendar links.
+- **Calc** (`calc.js`): units and mL for a dose from the vial amount and bac water, with a syringe drawing. "Save this mix" stores them on the peptide and its current vial. The Log form fills in units from the dose unless you type a volume.
+- **Peptides** have bac water, a cycle (weeks on/off and start) and "My protocol".
+- **Info** (`info.js`, `library.js`): My peptides (protocol, notes, doses logged, background), a library of about 45 peptides, guides, and a link to peptiderobot.com.
+- **Backup** (`backup.js`): Settings > Back up now saves a JSON file of everything (the APK uses Android's share sheet); restore merges a backup back in. Doses and How I feel export as CSV. The Log screen nudges when the last backup is over 14 days old.
+
 ## Later steps
-3 schedules + reminders (`schedules` store, `entries.scheduleId`, `entries.status`), 4 CSV + backup export.
+CSV import, multiple reminders per day of the same peptide, home-screen widget.
