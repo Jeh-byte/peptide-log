@@ -6,11 +6,14 @@
 //   entries   {id, peptideId, peptideName, dose, doseUnit, volume, volumeUnit,
 //              takenAt (ISO), site, notes, status ('taken'), vialId, scheduleId,
 //              createdAt, updatedAt}
-//   vials     step 2: {id, peptideId, peptideAmount, unit, diluentMl, mixedAt, status, ...}
+//   vials     {id, peptideId, amount, unit, diluentMl, mixedAt (ISO), status ('active'|'finished'),
+//              finishedAt, createdAt, updatedAt}   doses from mixedAt to finishedAt come out of it
+//   checkins  {id = date 'YYYY-MM-DD', date, sleep, energy, mood (1-5), sideEffects [], sideOther,
+//              weight, weightUnit ('kg'|'lb'), waist, waistUnit ('cm'|'in'), createdAt, updatedAt}
 //   schedules step 3: {id, peptideId, dose, doseUnit, rule, times, active, ...}
-//   meta      {key, value}  app settings and flags (e.g. seeded)
+//   meta      {key, value}  app settings and flags (e.g. seeded, units)
 const DB_NAME = 'peptide-log';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 const DB = (() => {
   let dbp;
@@ -37,6 +40,7 @@ const DB = (() => {
           db.createObjectStore('schedules', { keyPath: 'id' }).createIndex('peptideId', 'peptideId');
         }
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('checkins')) db.createObjectStore('checkins', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);

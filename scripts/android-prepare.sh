@@ -8,7 +8,7 @@ BG='#0f766e'
 # Only the app files go into the APK.
 rm -rf www android
 mkdir -p www
-cp index.html styles.css seed.js db.js app.js sw.js manifest.webmanifest www/
+cp index.html styles.css seed.js db.js app.js vials.js feel.js history-views.js sw.js manifest.webmanifest www/
 cp -r icons www/
 # Capacitor's JS runtime delivers native events (e.g. the back button) to the page. APK only.
 cp node_modules/@capacitor/core/dist/capacitor.js www/

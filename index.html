@@ -22,6 +22,7 @@
   <main>
     <!-- LOG -->
     <section id="view-log" class="view active">
+      <div id="alerts" class="alerts" role="region" aria-label="Vial warnings" hidden></div>
       <form id="logForm" autocomplete="off">
         <div class="edit-banner" id="editBanner" hidden>Editing an earlier entry</div>
 
@@ -30,6 +31,7 @@
           <select id="fPeptide" required></select>
         </label>
         <div class="hint" id="lastHint" hidden></div>
+        <div class="vial-hint" id="vialHint" hidden></div>
 
         <div class="row">
           <label class="field grow">
@@ -79,16 +81,87 @@
           <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
         </div>
       </form>
+
+      <section class="today" id="todaySec" aria-labelledby="todayLabel">
+        <div class="today-h">
+          <button type="button" class="icon-btn nav-btn" id="dayPrev" aria-label="Previous day">‹</button>
+          <h2 id="todayLabel">Today</h2>
+          <button type="button" class="icon-btn nav-btn" id="dayNext" aria-label="Next day">›</button>
+        </div>
+        <div id="todayDoses"></div>
+
+        <div class="feel-card">
+          <h3>How I feel</h3>
+          <div id="feelFaces"></div>
+          <div class="field">
+            <span>Side effects</span>
+            <div class="chips" id="sideChips"></div>
+            <input id="sideOther" type="text" placeholder="Anything else" aria-label="Other side effects" autocomplete="off">
+          </div>
+          <div class="row">
+            <label class="field grow"><span>Weight</span><input id="fWeight" type="number" inputmode="decimal" step="any" min="0"></label>
+            <label class="field unit"><span>&nbsp;</span><select id="fWeightUnit" aria-label="Weight unit"><option>kg</option><option>lb</option></select></label>
+          </div>
+          <div class="row">
+            <label class="field grow"><span>Waist</span><input id="fWaist" type="number" inputmode="decimal" step="any" min="0"></label>
+            <label class="field unit"><span>&nbsp;</span><select id="fWaistUnit" aria-label="Waist unit"><option>cm</option><option value="in">inches</option></select></label>
+          </div>
+          <div class="saved" id="feelSaved" aria-live="polite"></div>
+        </div>
+      </section>
     </section>
 
     <!-- HISTORY -->
     <section id="view-history" class="view">
-      <div class="row filters">
-        <select id="histFilter" aria-label="Filter by peptide"></select>
-        <input id="histSearch" type="search" placeholder="Search notes or site" aria-label="Search">
+      <div class="seg" id="histModes" role="group" aria-label="History view">
+        <button type="button" data-mode="list" aria-pressed="true">List</button>
+        <button type="button" data-mode="calendar" aria-pressed="false">Calendar</button>
+        <button type="button" data-mode="progress" aria-pressed="false">Progress</button>
       </div>
-      <div class="stats" id="histStats"></div>
-      <div id="histList"></div>
+
+      <div id="hist-list">
+        <div class="row filters">
+          <select id="histFilter" aria-label="Filter by peptide"></select>
+          <input id="histSearch" type="search" placeholder="Search notes or site" aria-label="Search">
+        </div>
+        <div class="stats" id="histStats"></div>
+        <div id="histList"></div>
+      </div>
+
+      <div id="hist-calendar" hidden>
+        <div class="today-h">
+          <button type="button" class="icon-btn nav-btn" id="calPrev" aria-label="Previous month">‹</button>
+          <h2 id="calTitle"></h2>
+          <button type="button" class="icon-btn nav-btn" id="calNext" aria-label="Next month">›</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <p class="cal-key subtle-p"><span class="cal-count" aria-hidden="true">2</span> doses that day · face = mood</p>
+        <div id="calDetail"></div>
+      </div>
+
+      <div id="hist-progress" hidden>
+        <div class="seg small" id="progRange" role="group" aria-label="Time range">
+          <button type="button" data-days="30" aria-pressed="false">30 days</button>
+          <button type="button" data-days="90" aria-pressed="true">90 days</button>
+          <button type="button" data-days="0" aria-pressed="false">All</button>
+        </div>
+        <div class="tiles" id="progTiles"></div>
+        <div class="chart-card">
+          <h3>Weight</h3>
+          <div class="legend"><span><i class="key-line" style="background:var(--s1)"></i>Weight</span><span><i class="key-mark" style="background:var(--s2)"></i>Reta dose</span></div>
+          <div class="chart" id="weightChart"></div>
+        </div>
+        <div class="chart-card">
+          <h3>How I feel</h3>
+          <div class="legend"><span><i class="key-line" style="background:var(--s1)"></i>Sleep</span><span><i class="key-line" style="background:var(--s2)"></i>Energy</span><span><i class="key-line" style="background:var(--s3)"></i>Mood</span></div>
+          <div class="chart" id="feelChart"></div>
+        </div>
+        <p class="subtle-p">Tap or drag on a chart to see the numbers for a day.</p>
+        <details class="chart-table">
+          <summary>Show the numbers as a table</summary>
+          <div id="progTable"></div>
+        </details>
+      </div>
     </section>
 
     <!-- PEPTIDES -->
@@ -124,11 +197,36 @@
       </div>
       <label class="field"><span>Vials on hand</span><input id="pCount" type="number" inputmode="numeric" step="1" min="0" value="1"></label>
       <label class="field"><span>Notes</span><textarea id="pNotes" rows="2"></textarea></label>
+      <div class="vial-box" id="pVialWrap" hidden>
+        <p id="pVialText"></p>
+        <button type="button" class="btn ghost small" id="pMixBtn">Mix a new vial</button>
+      </div>
       <label class="toggle" id="pArchivedWrap"><input type="checkbox" id="pArchived"> Archived (hide from the log list)</label>
       <div class="actions">
         <button class="btn primary" value="save" id="pSave">Save</button>
         <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
       </div>
+    </form>
+  </dialog>
+
+  <!-- Mix a new vial -->
+  <dialog id="vialDialog">
+    <form method="dialog">
+      <h2 id="vialTitle">Mix a new vial</h2>
+      <p class="subtle-p" id="vialCurrent" hidden></p>
+      <div class="row">
+        <label class="field grow"><span>Peptide in the vial</span><input id="vAmount" type="number" inputmode="decimal" step="any" min="0" required></label>
+        <label class="field unit"><span>&nbsp;</span><select id="vUnit" aria-label="Unit"><option>mg</option><option>mcg</option><option>IU</option><option>mL</option></select></label>
+      </div>
+      <label class="field"><span>Bacteriostatic water added (mL)</span><input id="vWater" type="number" inputmode="decimal" step="any" min="0" placeholder="Optional, e.g. 2"></label>
+      <p class="subtle-p">With the water amount, doses you log only as a volume or syringe units count too.</p>
+      <label class="field"><span>Mixed on</span><input id="vMixed" type="datetime-local" required></label>
+      <label class="toggle" id="vTakeWrap"><input type="checkbox" id="vTake"> <span id="vTakeText">Take 1 from vials on hand</span></label>
+      <div class="actions">
+        <button class="btn primary" value="save">Save vial</button>
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+      </div>
+      <button type="button" class="btn danger block vial-empty" id="vEmptyBtn" hidden>Mark current vial empty</button>
     </form>
   </dialog>
 
@@ -180,5 +278,8 @@
   <script src="seed.js"></script>
   <script src="db.js"></script>
   <script src="app.js"></script>
+  <script src="vials.js"></script>
+  <script src="feel.js"></script>
+  <script src="history-views.js"></script>
 </body>
 </html>

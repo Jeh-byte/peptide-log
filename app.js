@@ -1,4 +1,4 @@
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 const SITES = ['Abdomen L', 'Abdomen R', 'Thigh L', 'Thigh R', 'Arm L', 'Arm R', 'Glute L', 'Glute R', 'Nasal', 'Oral', 'Topical', 'Other'];
 const ADD_NEW = '__add__';
 // Set when running inside the Android APK (Capacitor), not in Chrome.
@@ -10,7 +10,7 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const num = (v) => (v === '' || v == null || isNaN(+v) ? null : +v);
 const fmtNum = (n) => (n == null ? '' : String(+(+n).toFixed(4)));
 
-const state = { peptides: [], supplies: [], entries: [], editingId: null, site: '' };
+const state = { peptides: [], supplies: [], entries: [], vials: [], checkins: [], units: { weight: 'kg', waist: 'cm' }, feelDay: null, editingId: null, site: '' };
 
 // ---------- helpers ----------
 function toLocalInput(d) {
@@ -60,7 +60,11 @@ const activePeptides = () => state.peptides.filter((p) => !p.archived).sort(byNa
 const lastEntryFor = (pid) => state.entries.filter((e) => e.peptideId === pid).sort((a, b) => b.takenAt.localeCompare(a.takenAt))[0];
 
 async function load() {
-  [state.peptides, state.supplies, state.entries] = await Promise.all([DB.all('peptides'), DB.all('supplies'), DB.all('entries')]);
+  let units;
+  [state.peptides, state.supplies, state.entries, state.vials, state.checkins, units] = await Promise.all([
+    DB.all('peptides'), DB.all('supplies'), DB.all('entries'), DB.all('vials'), DB.all('checkins'), DB.getMeta('units')
+  ]);
+  if (units) state.units = { ...state.units, ...units };
 }
 
 // ---------- tabs ----------
@@ -72,6 +76,7 @@ function show(view) {
     if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
   $('title').textContent = view === 'log' && state.editingId ? 'Edit dose' : TITLES[view];
+  if (view === 'log') { renderAlerts(); renderToday(); }
   if (view === 'history') renderHistory();
   if (view === 'peptides') renderPeptides();
   window.scrollTo(0, 0);
@@ -138,7 +143,7 @@ $('fPeptide').addEventListener('change', () => {
   }
   onPeptideChosen();
 });
-function onPeptideChosen() { renderLastHint(); renderSites(); }
+function onPeptideChosen() { renderLastHint(); renderVialHint(); renderSites(); }
 
 $('nowBtn').addEventListener('click', () => { $('fWhen').value = toLocalInput(new Date()); });
 
@@ -156,6 +161,8 @@ function resetForm(keepPeptide = true) {
   $('fSiteOther').value = '';
   renderVolHint();
   onPeptideChosen();
+  renderAlerts();
+  renderToday();
   if (document.querySelector('#view-log.active')) $('title').textContent = TITLES.log;
 }
 
@@ -251,6 +258,11 @@ function renderHistoryFilter() {
   sel.value = list.some((p) => p.id === cur) ? cur : '';
 }
 function renderHistory() {
+  if (state.histMode === 'calendar') return renderCalendar();
+  if (state.histMode === 'progress') return renderProgress();
+  renderHistoryList();
+}
+function renderHistoryList() {
   renderHistoryFilter();
   const f = $('histFilter').value;
   const q = $('histSearch').value.trim().toLowerCase();
@@ -292,9 +304,11 @@ function renderPeptides() {
     const count = state.entries.filter((e) => e.peptideId === p.id).length;
     const last = lastEntryFor(p.id);
     const meta = [vialText(p), count ? `${count} dose${count === 1 ? '' : 's'} logged` : 'no doses yet', last ? `last ${ago(last.takenAt)}` : ''].filter(Boolean).join(' · ');
+    const v = activeVial(p.id), s = v && vialStatus(v);
     return `<button class="card${p.archived ? ' archived' : ''}" data-id="${esc(p.id)}">
       <div class="line1"><span>${esc(p.name)}</span>${p.archived ? '<span class="time">archived</span>' : ''}</div>
       <div class="line2">${esc(meta)}</div>
+      ${v ? `<div class="vial-line">${esc(vialLine(v, s))}</div>${meterHTML(s)}` : ''}
       ${p.notes ? `<div class="note">${esc(p.notes)}</div>` : ''}
     </button>`;
   }).join('') || `<div class="empty">No peptides yet.</div>`;
@@ -323,6 +337,11 @@ function openPeptideDialog(p, done) {
   $('pNotes').value = p?.notes || '';
   $('pArchived').checked = !!p?.archived;
   $('pArchivedWrap').hidden = !p;
+  $('pVialWrap').hidden = !p;
+  if (p) {
+    const v = activeVial(p.id);
+    $('pVialText').textContent = v ? `Current vial: ${vialLine(v, vialStatus(v))}` : 'No vial mixed yet. Start one to track how much is left.';
+  }
   $('pepDialog').returnValue = '';
   $('pepDialog').showModal();
 }
@@ -347,6 +366,11 @@ $('pepDialog').addEventListener('close', async () => {
   pepDone?.(rec);
 });
 $('pepDialog').addEventListener('cancel', () => { $('pepDialog').returnValue = 'cancel'; });
+$('pMixBtn').addEventListener('click', () => {
+  const p = pepEditing, done = pepDone;
+  $('pepDialog').close('cancel');
+  openVialDialog(p, () => done?.(p));
+});
 
 let supEditing = null;
 $('supplyList').addEventListener('click', (e) => {
