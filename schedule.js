@@ -67,11 +67,12 @@ function renderChecklist() {
     const name = pepName(d.it.peptideId);
     const what = itemText(withDraw(d.it));
     const done = !!d.entry;
+    const empty = state.peptides.find((p) => p.id === d.it.peptideId)?.kind === 'oral' ? 'Tap to tick off' : 'Tap to enter the dose';
     const when = done ? `taken ${timeStr(d.entry.takenAt)}` : fmtTime(d.it.time);
     const label = `${name}${what ? ` ${what}` : ''}, ${done ? `taken at ${timeStr(d.entry.takenAt)}. Tap to edit` : `due ${fmtTime(d.it.time)}. Tap to log it`}`;
     return `<button type="button" class="check-row${done ? ' done' : ''}" data-n="${n}" aria-label="${esc(label)}">
       <span class="box" aria-hidden="true">${done ? '✓' : ''}</span>
-      <span class="ck-main"><strong>${esc(name)}</strong>${what ? `<span>${esc(what)}</span>` : '<span>Tap to enter the dose</span>'}</span>
+      <span class="ck-main"><strong>${esc(name)}</strong>${what ? `<span>${esc(what)}</span>` : `<span>${empty}</span>`}</span>
       <span class="ck-time">${esc(when)}</span>
     </button>`;
   }).join('');
@@ -87,7 +88,8 @@ $('checklist').addEventListener('click', async (e) => {
   const k = feelDay();
   const [h, m] = d.it.time.split(':').map(Number);
   const when = k === todayKey() ? new Date() : new Date(keyDate(k).setHours(h, m, 0, 0));
-  if (d.it.dose == null && d.it.volume == null) {
+  const oral = pep.kind === 'oral';
+  if (d.it.dose == null && d.it.volume == null && !oral) {
     // no usual dose yet: open the form with what we know
     resetForm(false);
     renderPeptideSelect(pep.id);
@@ -102,7 +104,7 @@ $('checklist').addEventListener('click', async (e) => {
     peptideId: pep.id, peptideName: pep.name,
     dose: it.dose ?? null, doseUnit: it.doseUnit || 'mcg',
     volume: it.volume ?? null, volumeUnit: it.volumeUnit || 'units',
-    takenAt: when.toISOString(), site: '', notes: '', status: 'taken', vialId: null, scheduleId: d.s.id
+    takenAt: when.toISOString(), site: oral ? 'Oral' : '', notes: '', status: 'taken', vialId: null, scheduleId: d.s.id
   });
   state.entries.push(rec);
   askPersist();
@@ -405,5 +407,20 @@ async function seedSetup() {
       }
     }
     await DB.setMeta('schedulesSeeded', new Date().toISOString());
+  }
+  if (!(await DB.getMeta('oralSeeded'))) {
+    for (const o of window.SEED_ORAL || []) {
+      let p = state.peptides.find((x) => normName(x.name) === normName(o.name));
+      if (!p) {
+        p = await DB.put('peptides', { name: o.name, kind: 'oral', vialAmount: null, vialUnit: 'mg', vialCount: null, bacWaterMl: null, notes: o.notes, archived: false });
+        state.peptides.push(p);
+      }
+      if (state.schedules.some((s) => s.items.some((it) => it.peptideId === p.id))) continue;
+      state.schedules.push(await DB.put('schedules', {
+        name: o.schedule, rule: 'daily', every: 1, blockDays: 1, startDate: todayKey(), active: true,
+        items: [{ peptideId: p.id, time: o.time, dose: null, doseUnit: 'mg', volume: null, volumeUnit: 'units' }]
+      }));
+    }
+    await DB.setMeta('oralSeeded', new Date().toISOString());
   }
 }

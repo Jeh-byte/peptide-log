@@ -2,7 +2,8 @@
 //
 // Data model (designed so later steps only add fields/records, never migrate old ones):
 //   peptides  {id, name, vialAmount, vialUnit, vialCount, bacWaterMl, notes, protocol,
-//              cycleOnWeeks, cycleOffWeeks, cycleStart ('YYYY-MM-DD'), archived, createdAt, updatedAt}
+//              cycleOnWeeks, cycleOffWeeks, cycleStart ('YYYY-MM-DD'), kind ('oral' for tablets and
+//              supplements: no vial), archived, createdAt, updatedAt}
 //   supplies  {id, name, amount, unit, count, createdAt, updatedAt}          e.g. bac water
 //   entries   {id, peptideId, peptideName, dose, doseUnit, volume, volumeUnit,
 //              takenAt (ISO), site, notes, status ('taken'), vialId, scheduleId,

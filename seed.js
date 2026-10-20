@@ -55,3 +55,12 @@ window.SEED_SCHEDULES = [
     { peptide: 'Retatrutide', dose: 3, doseUnit: 'mg', time: '10:00' }
   ] }
 ];
+
+// Tablets and supplements from Jeh (20 Oct 2026). Applied once, on new and existing installs.
+// kind 'oral': no vial or mixing; ticking one off on Today logs it straight away. No doses were
+// given, so none are set; add them under Peptides > Schedule.
+window.SEED_ORAL = [
+  { name: 'Cymbalta', time: '08:00', schedule: 'Cymbalta with breakfast', notes: 'With breakfast, alongside GHK-Cu.' },
+  { name: 'Iron + vitamin C', time: '15:00', schedule: 'Iron + vitamin C', notes: '' },
+  { name: 'Zinc + vitamin D', time: '18:30', schedule: 'Zinc + vitamin D with dinner', notes: 'With dinner.' }
+];
