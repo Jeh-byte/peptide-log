@@ -423,4 +423,15 @@ async function seedSetup() {
     }
     await DB.setMeta('oralSeeded', new Date().toISOString());
   }
+  // Selank was seeded with no dose; fill it in once on existing installs, unless one was set since.
+  if (!(await DB.getMeta('selankDose'))) {
+    const p = findPeptide('Selank');
+    for (const s of p ? state.schedules : []) {
+      if (!s.items.some((it) => it.peptideId === p.id && it.dose == null && it.volume == null)) continue;
+      const items = s.items.map((it) => (it.peptideId === p.id && it.dose == null && it.volume == null ? { ...it, ...window.SEED_SELANK } : it));
+      const rec = await DB.put('schedules', { ...s, items });
+      state.schedules = state.schedules.map((x) => (x.id === rec.id ? rec : x));
+    }
+    await DB.setMeta('selankDose', new Date().toISOString());
+  }
 }

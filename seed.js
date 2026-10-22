@@ -35,13 +35,15 @@ window.SEED_MIX = { 'Glutathione': 7.5 };
 // Schedules from Jeh's messages (16 Oct 2026). Applied once. Peptides are matched by name; an item
 // with no dose takes the last logged dose of that peptide, or opens the log form when tapped.
 // Times and the Reta dose were guesses in the message, and are editable under Peptides > Schedule.
+// Selank: 10 units from Jeh (22 Oct 2026); 500 mcg at 10 mg in 2 mL.
+window.SEED_SELANK = { dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units' };
 window.SEED_SCHEDULES = [
   { name: 'Every morning', rule: 'daily', startDate: '2026-10-16', items: [
     { peptide: 'GHK-Cu', dose: 2.5, doseUnit: 'mg', volume: 5, volumeUnit: 'units', time: '08:00' },
     { peptide: 'KPV', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '08:00' }
   ] },
   { name: 'Semax / Selank', rule: 'rotate', blockDays: 28, startDate: '2026-10-16', items: [
-    { peptide: 'Selank', time: '08:00' },
+    { peptide: 'Selank', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '08:00' },
     { peptide: 'Semax', time: '08:00' }
   ] },
   { name: 'Every night', rule: 'daily', startDate: '2026-10-16', items: [
