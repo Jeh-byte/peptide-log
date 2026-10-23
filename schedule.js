@@ -434,4 +434,18 @@ async function seedSetup() {
     }
     await DB.setMeta('selankDose', new Date().toISOString());
   }
+  // BPC-157 and TB-500 joined 'Every night' after first setup; add them once unless already scheduled.
+  if (!(await DB.getMeta('nightlyBpcTb'))) {
+    const toAdd = (window.SEED_NIGHTLY || []).map((it) => ({ it, p: findPeptide(it.peptide) }))
+      .filter(({ p }) => p && !state.schedules.some((s) => s.items.some((x) => x.peptideId === p.id)))
+      .map(({ it, p }) => ({ peptideId: p.id, time: it.time, dose: it.dose, doseUnit: it.doseUnit, volume: it.volume, volumeUnit: it.volumeUnit }));
+    if (toAdd.length) {
+      const night = state.schedules.find((s) => s.name === 'Every night');
+      const rec = night
+        ? await DB.put('schedules', { ...night, items: [...night.items, ...toAdd] })
+        : await DB.put('schedules', { name: 'Every night', rule: 'daily', every: 1, blockDays: 1, startDate: todayKey(), active: true, items: toAdd });
+      state.schedules = night ? state.schedules.map((x) => (x.id === rec.id ? rec : x)) : [...state.schedules, rec];
+    }
+    await DB.setMeta('nightlyBpcTb', new Date().toISOString());
+  }
 }

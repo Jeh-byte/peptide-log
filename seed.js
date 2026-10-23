@@ -37,6 +37,12 @@ window.SEED_MIX = { 'Glutathione': 7.5 };
 // Times and the Reta dose were guesses in the message, and are editable under Peptides > Schedule.
 // Selank: 10 units from Jeh (22 Oct 2026); 500 mcg at 10 mg in 2 mL.
 window.SEED_SELANK = { dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units' };
+// BPC-157 and TB-500: 10 units every night from Jeh (23 Oct 2026); 500 mcg at 10 mg in 2 mL.
+// Added once to the 'Every night' schedule on existing installs too.
+window.SEED_NIGHTLY = [
+  { peptide: 'BPC-157', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '21:00' },
+  { peptide: 'TB-500', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '21:00' }
+];
 window.SEED_SCHEDULES = [
   { name: 'Every morning', rule: 'daily', startDate: '2026-10-16', items: [
     { peptide: 'GHK-Cu', dose: 2.5, doseUnit: 'mg', volume: 5, volumeUnit: 'units', time: '08:00' },
@@ -47,7 +53,8 @@ window.SEED_SCHEDULES = [
     { peptide: 'Semax', time: '08:00' }
   ] },
   { name: 'Every night', rule: 'daily', startDate: '2026-10-16', items: [
-    { peptide: 'SS-31', dose: 2, doseUnit: 'mg', volume: 40, volumeUnit: 'units', time: '21:00' }
+    { peptide: 'SS-31', dose: 2, doseUnit: 'mg', volume: 40, volumeUnit: 'units', time: '21:00' },
+    ...window.SEED_NIGHTLY
   ] },
   { name: 'Alternating days', rule: 'rotate', blockDays: 1, startDate: '2026-10-16', items: [
     { peptide: 'MOTS-c', dose: 5, doseUnit: 'mg', time: '18:00' },
