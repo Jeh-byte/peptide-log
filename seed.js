@@ -43,6 +43,9 @@ window.SEED_NIGHTLY = [
   { peptide: 'BPC-157', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '21:00' },
   { peptide: 'TB-500', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '21:00' }
 ];
+// SS-31 came off the cycle (Jeh, 25 Oct 2026). Removed once from every schedule on existing installs;
+// the peptide, its vials and its logged doses stay.
+window.SEED_UNSCHEDULE = ['SS-31'];
 window.SEED_SCHEDULES = [
   { name: 'Every morning', rule: 'daily', startDate: '2026-10-16', items: [
     { peptide: 'GHK-Cu', dose: 2.5, doseUnit: 'mg', volume: 5, volumeUnit: 'units', time: '08:00' },
@@ -53,7 +56,6 @@ window.SEED_SCHEDULES = [
     { peptide: 'Semax', time: '08:00' }
   ] },
   { name: 'Every night', rule: 'daily', startDate: '2026-10-16', items: [
-    { peptide: 'SS-31', dose: 2, doseUnit: 'mg', volume: 40, volumeUnit: 'units', time: '21:00' },
     ...window.SEED_NIGHTLY
   ] },
   { name: 'Alternating days', rule: 'rotate', blockDays: 1, startDate: '2026-10-16', items: [

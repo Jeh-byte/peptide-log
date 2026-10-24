@@ -448,4 +448,15 @@ async function seedSetup() {
     }
     await DB.setMeta('nightlyBpcTb', new Date().toISOString());
   }
+  // SS-31 came off the cycle; take it off every schedule once. A schedule left empty is turned off.
+  if (!(await DB.getMeta('ss31Removed'))) {
+    const ids = new Set(state.peptides.filter((p) => (window.SEED_UNSCHEDULE || []).some((n) => normName(p.name) === normName(n))).map((p) => p.id));
+    for (const s of state.schedules) {
+      if (!s.items.some((it) => ids.has(it.peptideId))) continue;
+      const items = s.items.filter((it) => !ids.has(it.peptideId));
+      const rec = await DB.put('schedules', { ...s, items, active: items.length ? s.active : false });
+      state.schedules = state.schedules.map((x) => (x.id === rec.id ? rec : x));
+    }
+    await DB.setMeta('ss31Removed', new Date().toISOString());
+  }
 }
