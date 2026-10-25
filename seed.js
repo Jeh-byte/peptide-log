@@ -46,21 +46,23 @@ window.SEED_NIGHTLY = [
 // SS-31 came off the cycle (Jeh, 25 Oct 2026). Removed once from every schedule on existing installs;
 // the peptide, its vials and its logged doses stay.
 window.SEED_UNSCHEDULE = ['SS-31'];
+// Swap from Jeh (25 Oct 2026): GHK-Cu and KPV move to 'Every night' with BPC-157 and TB-500;
+// MOTS-c and Glutathione keep alternating but move to the morning. Applied once on existing installs.
+window.SEED_TO_NIGHT = ['GHK-Cu', 'KPV'];
+window.SEED_TO_MORNING = { names: ['MOTS-c', 'Glutathione'], time: '08:00' };
 window.SEED_SCHEDULES = [
-  { name: 'Every morning', rule: 'daily', startDate: '2026-10-16', items: [
-    { peptide: 'GHK-Cu', dose: 2.5, doseUnit: 'mg', volume: 5, volumeUnit: 'units', time: '08:00' },
-    { peptide: 'KPV', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '08:00' }
-  ] },
   { name: 'Semax / Selank', rule: 'rotate', blockDays: 28, startDate: '2026-10-16', items: [
     { peptide: 'Selank', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '08:00' },
     { peptide: 'Semax', time: '08:00' }
   ] },
   { name: 'Every night', rule: 'daily', startDate: '2026-10-16', items: [
-    ...window.SEED_NIGHTLY
+    ...window.SEED_NIGHTLY,
+    { peptide: 'GHK-Cu', dose: 2.5, doseUnit: 'mg', volume: 5, volumeUnit: 'units', time: '21:00' },
+    { peptide: 'KPV', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '21:00' }
   ] },
   { name: 'Alternating days', rule: 'rotate', blockDays: 1, startDate: '2026-10-16', items: [
-    { peptide: 'MOTS-c', dose: 5, doseUnit: 'mg', time: '18:00' },
-    { peptide: 'Glutathione', dose: 200, doseUnit: 'mg', time: '18:00' }
+    { peptide: 'MOTS-c', dose: 5, doseUnit: 'mg', time: '08:00' },
+    { peptide: 'Glutathione', dose: 200, doseUnit: 'mg', time: '08:00' }
   ] },
   { name: 'Retatrutide', rule: 'every', every: 6, startDate: '2026-10-17', items: [
     { peptide: 'Retatrutide', dose: 3, doseUnit: 'mg', time: '10:00' }
@@ -71,7 +73,7 @@ window.SEED_SCHEDULES = [
 // kind 'oral': no vial or mixing; ticking one off on Today logs it straight away. No doses were
 // given, so none are set; add them under Peptides > Schedule.
 window.SEED_ORAL = [
-  { name: 'Cymbalta', time: '08:00', schedule: 'Cymbalta with breakfast', notes: 'With breakfast, alongside GHK-Cu.' },
+  { name: 'Cymbalta', time: '08:00', schedule: 'Cymbalta with breakfast', notes: 'With breakfast.' },
   { name: 'Iron + vitamin C', time: '15:00', schedule: 'Iron + vitamin C', notes: '' },
   { name: 'Zinc + vitamin D', time: '18:30', schedule: 'Zinc + vitamin D with dinner', notes: 'With dinner.' }
 ];

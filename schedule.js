@@ -459,4 +459,35 @@ async function seedSetup() {
     }
     await DB.setMeta('ss31Removed', new Date().toISOString());
   }
+  // GHK-Cu and KPV move onto 'Every night' (doses kept); MOTS-c and Glutathione move to the morning.
+  // Applied once. A schedule left empty is turned off.
+  if (!(await DB.getMeta('nightMorningSwap'))) {
+    const idsOf = (names) => new Set(names.map(findPeptide).filter(Boolean).map((p) => p.id));
+    const toNight = idsOf(window.SEED_TO_NIGHT || []);
+    const toMorning = idsOf(window.SEED_TO_MORNING?.names || []);
+    const night = state.schedules.find((s) => s.name === 'Every night');
+    const nightTime = night?.items[0]?.time || '21:00';
+    const moved = [];
+    for (const s of state.schedules) {
+      let items = s.items;
+      if (s !== night && items.some((it) => toNight.has(it.peptideId))) {
+        moved.push(...items.filter((it) => toNight.has(it.peptideId)).map((it) => ({ ...it, time: nightTime })));
+        items = items.filter((it) => !toNight.has(it.peptideId));
+      }
+      if (s === night) items = items.map((it) => (toNight.has(it.peptideId) ? { ...it, time: nightTime } : it));
+      items = items.map((it) => (toMorning.has(it.peptideId) ? { ...it, time: window.SEED_TO_MORNING.time } : it));
+      if (items.length === s.items.length && items.every((it, i) => it.time === s.items[i].time)) continue;
+      const rec = await DB.put('schedules', { ...s, items, active: items.length ? s.active : false });
+      state.schedules = state.schedules.map((x) => (x.id === rec.id ? rec : x));
+    }
+    const fresh = moved.filter((it) => !night?.items.some((x) => x.peptideId === it.peptideId));
+    if (fresh.length) {
+      const cur = night && state.schedules.find((x) => x.id === night.id);
+      const rec = cur
+        ? await DB.put('schedules', { ...cur, items: [...cur.items, ...fresh], active: true })
+        : await DB.put('schedules', { name: 'Every night', rule: 'daily', every: 1, blockDays: 1, startDate: todayKey(), active: true, items: fresh });
+      state.schedules = cur ? state.schedules.map((x) => (x.id === rec.id ? rec : x)) : [...state.schedules, rec];
+    }
+    await DB.setMeta('nightMorningSwap', new Date().toISOString());
+  }
 }
