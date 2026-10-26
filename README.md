@@ -36,6 +36,7 @@ Settings > Choose import file. JSON: `{"format":"peptide-log-import","version":1
 
 ## Schedules, Calc, Info, backup (v1.3)
 - **Today checklist** (`schedule.js`): schedules are every day, every N days, or take turns (one peptide at a time, N days each; 1 = alternate days). Tapping a due dose logs it with the usual dose and units (Undo in the toast); tapping a ticked one opens it for editing. A peptide in an off week of its cycle is left off. Jeh's five schedules are seeded once from `seed.js`.
+- **Stacks:** a schedule with 2+ doses due at the same time gets a header with "Log all" on Today (e.g. the Glow stack: GHK-Cu, BPC-157, TB-500, KPV at night). Doses with no usual amount are skipped and named in the toast; Undo removes the whole stack.
 - **Reminders:** in the APK, Peptides > "Phone reminders" schedules local notifications for the next 21 days (topped up on every open). Each schedule also has Add to Google Calendar links.
 - **Calc** (`calc.js`): units and mL for a dose from the vial amount and bac water, with a syringe drawing. "Save this mix" stores them on the peptide and its current vial. The Log form fills in units from the dose unless you type a volume.
 - **Peptides** have bac water, a cycle (weeks on/off and start) and "My protocol".

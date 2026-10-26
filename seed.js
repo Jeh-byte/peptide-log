@@ -50,6 +50,13 @@ window.SEED_UNSCHEDULE = ['SS-31'];
 // MOTS-c and Glutathione keep alternating but move to the morning. Applied once on existing installs.
 window.SEED_TO_NIGHT = ['GHK-Cu', 'KPV'];
 window.SEED_TO_MORNING = { names: ['MOTS-c', 'Glutathione'], time: '08:00' };
+// From Jeh (26 Oct 2026): 'Every night' becomes the Glow stack (GHK-Cu, BPC-157, TB-500, KPV), and
+// zinc moves to breakfast so it is 12+ hours away from the GHK-Cu. MOTS-c cycle is finished: it comes
+// off every schedule and is archived (its vials and logged doses stay); Glutathione keeps its days.
+// Applied once on existing installs.
+window.SEED_GLOW = { from: 'Every night', name: 'Glow stack' };
+window.SEED_ZINC = { name: 'Zinc + vitamin D', time: '08:00', schedule: 'Zinc + vitamin D with breakfast', notes: 'With breakfast.' };
+window.SEED_RETIRE = ['MOTS-c'];
 window.SEED_SCHEDULES = [
   { name: 'Semax / Selank', rule: 'rotate', blockDays: 28, startDate: '2026-10-16', items: [
     { peptide: 'Selank', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '08:00' },

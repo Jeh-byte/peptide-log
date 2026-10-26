@@ -319,6 +319,9 @@ dialog p { margin: 0 0 10px; }
 .check-row.done { background: var(--surface-2); }
 .ck-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .ck-main span { font-size: 14px; color: var(--muted); }
+.stack-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 2px 0; font-size: 14px; color: var(--muted); }
+.stack-h strong { color: var(--text); }
+.stack-done { font-size: 13px; }
 .ck-time { flex: none; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
 .toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 14px; }
 .toast button { font: inherit; font-weight: 700; color: var(--accent-soft); background: none; border: 0; padding: 6px 4px; min-height: 36px; }

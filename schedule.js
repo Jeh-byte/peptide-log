@@ -42,7 +42,8 @@ function dueOn(k) {
   const dayEntries = state.entries.filter((e) => dayKey(e.takenAt) === k);
   const due = [];
   for (const s of state.schedules) for (const [it, i] of itemsOn(s, k)) due.push({ s, it, i });
-  due.sort((a, b) => a.it.time.localeCompare(b.it.time) || pepName(a.it.peptideId).localeCompare(pepName(b.it.peptideId)));
+  // by time, then schedule, so a stack's doses sit together under its header
+  due.sort((a, b) => a.it.time.localeCompare(b.it.time) || a.s.name.localeCompare(b.s.name) || pepName(a.it.peptideId).localeCompare(pepName(b.it.peptideId)));
   for (const d of due) {
     const mine = dayEntries.filter((e) => e.peptideId === d.it.peptideId && !used.has(e.id));
     d.entry = mine.find((e) => e.scheduleId === d.s.id) || mine[0] || null;
@@ -59,18 +60,31 @@ function nextDue(s, from = todayKey(), item = null) {
 }
 
 // ---------- Today checklist ----------
+// A schedule with 2+ doses due at the same time is a stack: it gets a header with "Log all".
+const stackKey = (d) => `${d.s.id}|${d.it.time}`;
+function stackHeader(due, d) {
+  const all = due.filter((x) => stackKey(x) === stackKey(d));
+  const left = all.filter((x) => !x.entry).length;
+  return `<div class="stack-h">
+    <span><strong>${esc(d.s.name)}</strong> · ${esc(fmtTime(d.it.time))}</span>
+    ${left ? `<button type="button" class="btn ghost small" data-stack="${esc(stackKey(d))}">Log all ${left}</button>` : '<span class="stack-done">All taken</span>'}
+  </div>`;
+}
 function renderChecklist() {
   const k = feelDay();
   const due = dueOn(k);
+  const size = {};
+  for (const d of due) size[stackKey(d)] = (size[stackKey(d)] || 0) + 1;
   $('checkWrap').hidden = !due.length;
   $('checklist').innerHTML = due.map((d, n) => {
+    const head = size[stackKey(d)] > 1 && (n === 0 || stackKey(due[n - 1]) !== stackKey(d)) ? stackHeader(due, d) : '';
     const name = pepName(d.it.peptideId);
     const what = itemText(withDraw(d.it));
     const done = !!d.entry;
     const empty = state.peptides.find((p) => p.id === d.it.peptideId)?.kind === 'oral' ? 'Tap to tick off' : 'Tap to enter the dose';
     const when = done ? `taken ${timeStr(d.entry.takenAt)}` : fmtTime(d.it.time);
     const label = `${name}${what ? ` ${what}` : ''}, ${done ? `taken at ${timeStr(d.entry.takenAt)}. Tap to edit` : `due ${fmtTime(d.it.time)}. Tap to log it`}`;
-    return `<button type="button" class="check-row${done ? ' done' : ''}" data-n="${n}" aria-label="${esc(label)}">
+    return `${head}<button type="button" class="check-row${done ? ' done' : ''}" data-n="${n}" aria-label="${esc(label)}">
       <span class="box" aria-hidden="true">${done ? '✓' : ''}</span>
       <span class="ck-main"><strong>${esc(name)}</strong>${what ? `<span>${esc(what)}</span>` : `<span>${empty}</span>`}</span>
       <span class="ck-time">${esc(when)}</span>
@@ -78,18 +92,60 @@ function renderChecklist() {
   }).join('');
   $('checklist').due = due;
 }
+function dueWhen(d) {
+  const k = feelDay();
+  const [h, m] = d.it.time.split(':').map(Number);
+  return k === todayKey() ? new Date() : new Date(keyDate(k).setHours(h, m, 0, 0));
+}
+const needsDose = (d, pep) => d.it.dose == null && d.it.volume == null && pep.kind !== 'oral';
+// Saves a due dose with its usual amount; returns the new entry.
+async function logDue(d, pep, when) {
+  const oral = pep.kind === 'oral';
+  const it = withDraw(d.it);
+  const rec = await DB.put('entries', {
+    peptideId: pep.id, peptideName: pep.name,
+    dose: it.dose ?? null, doseUnit: it.doseUnit || 'mcg',
+    volume: it.volume ?? null, volumeUnit: it.volumeUnit || 'units',
+    takenAt: when.toISOString(), site: oral ? 'Oral' : '', notes: '', status: 'taken', vialId: null, scheduleId: d.s.id
+  });
+  state.entries.push(rec);
+  return rec;
+}
+function undoToast(msg, recs) {
+  askPersist();
+  afterDoseChange();
+  toast(msg, { label: 'Undo', fn: async () => {
+    for (const r of recs) await DB.del('entries', r.id);
+    const gone = new Set(recs.map((r) => r.id));
+    state.entries = state.entries.filter((x) => !gone.has(x.id));
+    afterDoseChange();
+    toast('Removed');
+  } });
+}
 $('checklist').addEventListener('click', async (e) => {
+  const sb = e.target.closest('[data-stack]');
+  if (sb) {
+    const group = $('checklist').due.filter((d) => stackKey(d) === sb.dataset.stack && !d.entry);
+    const recs = [], skipped = [];
+    const when = group.length && dueWhen(group[0]);
+    for (const d of group) {
+      const pep = state.peptides.find((p) => p.id === d.it.peptideId);
+      if (!pep || needsDose(d, pep)) { skipped.push(pepName(d.it.peptideId)); continue; }
+      recs.push(await logDue(d, pep, when));
+    }
+    const name = group[0]?.s.name || 'stack';
+    const msg = recs.length ? `Logged ${name} (${recs.length})${skipped.length ? `. ${skipped.join(', ')} needs a dose` : ''}` : `${skipped.join(', ')} needs a dose. Tap it to enter one`;
+    if (recs.length) undoToast(msg, recs); else toast(msg);
+    return;
+  }
   const b = e.target.closest('.check-row');
   if (!b) return;
   const d = $('checklist').due[+b.dataset.n];
   if (d.entry) { editEntry(d.entry.id); return; }
   const pep = state.peptides.find((p) => p.id === d.it.peptideId);
   if (!pep) { toast('That peptide no longer exists. Edit the schedule.'); return; }
-  const k = feelDay();
-  const [h, m] = d.it.time.split(':').map(Number);
-  const when = k === todayKey() ? new Date() : new Date(keyDate(k).setHours(h, m, 0, 0));
-  const oral = pep.kind === 'oral';
-  if (d.it.dose == null && d.it.volume == null && !oral) {
+  const when = dueWhen(d);
+  if (needsDose(d, pep)) {
     // no usual dose yet: open the form with what we know
     resetForm(false);
     renderPeptideSelect(pep.id);
@@ -99,22 +155,7 @@ $('checklist').addEventListener('click', async (e) => {
     $('fDose').focus();
     return;
   }
-  const it = withDraw(d.it);
-  const rec = await DB.put('entries', {
-    peptideId: pep.id, peptideName: pep.name,
-    dose: it.dose ?? null, doseUnit: it.doseUnit || 'mcg',
-    volume: it.volume ?? null, volumeUnit: it.volumeUnit || 'units',
-    takenAt: when.toISOString(), site: oral ? 'Oral' : '', notes: '', status: 'taken', vialId: null, scheduleId: d.s.id
-  });
-  state.entries.push(rec);
-  askPersist();
-  afterDoseChange();
-  toast(`Logged ${pep.name}`, { label: 'Undo', fn: async () => {
-    await DB.del('entries', rec.id);
-    state.entries = state.entries.filter((x) => x.id !== rec.id);
-    afterDoseChange();
-    toast('Removed');
-  } });
+  undoToast(`Logged ${pep.name}`, [await logDue(d, pep, when)]);
 });
 function afterDoseChange() {
   renderToday();
@@ -489,5 +530,49 @@ async function seedSetup() {
       state.schedules = cur ? state.schedules.map((x) => (x.id === rec.id ? rec : x)) : [...state.schedules, rec];
     }
     await DB.setMeta('nightMorningSwap', new Date().toISOString());
+  }
+  // Glow stack rename, zinc to breakfast, MOTS-c retired. Applied once.
+  if (!(await DB.getMeta('glowZincMots'))) {
+    const save = async (s) => {
+      const rec = await DB.put('schedules', s);
+      state.schedules = state.schedules.map((x) => (x.id === rec.id ? rec : x));
+    };
+    const g = window.SEED_GLOW;
+    const night = state.schedules.find((s) => s.name === g.from);
+    if (night) await save({ ...night, name: g.name });
+
+    const z = window.SEED_ZINC;
+    const zinc = state.peptides.find((p) => normName(p.name) === normName(z.name));
+    if (zinc) {
+      for (const s of state.schedules.filter((x) => x.items.some((it) => it.peptideId === zinc.id))) {
+        await save({
+          ...s,
+          name: s.items.length === 1 ? z.schedule : s.name,
+          items: s.items.map((it) => (it.peptideId === zinc.id ? { ...it, time: z.time } : it))
+        });
+      }
+      if (/dinner/i.test(zinc.notes || '')) {
+        const rec = await DB.put('peptides', { ...zinc, notes: z.notes });
+        state.peptides = state.peptides.map((x) => (x.id === rec.id ? rec : x));
+      }
+    }
+
+    const retire = state.peptides.filter((p) => (window.SEED_RETIRE || []).some((n) => normName(p.name) === normName(n)));
+    const ids = new Set(retire.map((p) => p.id));
+    for (const s of state.schedules.filter((x) => x.items.some((it) => ids.has(it.peptideId)))) {
+      const keep = s.items.map((it, i) => [it, i]).filter(([it]) => !ids.has(it.peptideId));
+      const items = keep.map(([it]) => it);
+      // An alternate-days rotation left with one peptide would make it daily; keep it on its own days.
+      if (s.rule === 'rotate' && s.blockDays === 1 && keep.length === 1) {
+        await save({ ...s, rule: 'every', every: s.items.length, startDate: shiftDay(s.startDate, keep[0][1]), items });
+      } else {
+        await save({ ...s, items, active: items.length ? s.active : false });
+      }
+    }
+    for (const p of retire.filter((x) => !x.archived)) {
+      const rec = await DB.put('peptides', { ...p, archived: true });
+      state.peptides = state.peptides.map((x) => (x.id === rec.id ? rec : x));
+    }
+    await DB.setMeta('glowZincMots', new Date().toISOString());
   }
 }
