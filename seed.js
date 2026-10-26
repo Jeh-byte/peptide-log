@@ -60,7 +60,15 @@ window.SEED_RETIRE = ['MOTS-c'];
 // DSIP: 5 units every night from Jeh (26 Oct 2026); 250 mcg at 10 mg in 2 mL. Its own schedule, not
 // part of the Glow stack. Added once unless DSIP is already scheduled. Taken fasting (Jeh, 26 Oct 2026):
 // the note shows on Today and goes into the logged dose's notes.
-window.SEED_DSIP = { name: 'DSIP at night', peptide: 'DSIP', dose: 250, doseUnit: 'mcg', volume: 5, volumeUnit: 'units', time: '21:00', note: 'Fasting' };
+// Cagrilintide from Jeh (27 Oct 2026): 10 units (0.25 mg at 5 mg in 2 mL), taken 27 Oct, then every
+// Monday from 2 Nov. The 27 Oct dose had no time given; 10:00 is a guess, editable in History.
+window.SEED_CAG = {
+  peptide: 'Cagrilintide', bacWaterMl: 2,
+  schedule: { name: 'Cagrilintide Mondays', rule: 'every', every: 7, startDate: '2026-11-02', time: '10:00' },
+  dose: 0.25, doseUnit: 'mg', volume: 10, volumeUnit: 'units',
+  taken: '2026-10-27T10:00'
+};
+window.SEED_DSIP ={ name: 'DSIP at night', peptide: 'DSIP', dose: 250, doseUnit: 'mcg', volume: 5, volumeUnit: 'units', time: '21:00', note: 'Fasting' };
 window.SEED_SCHEDULES = [
   { name: 'Semax / Selank', rule: 'rotate', blockDays: 28, startDate: '2026-10-16', items: [
     { peptide: 'Selank', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '08:00' },

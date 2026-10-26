@@ -599,4 +599,30 @@ async function seedSetup() {
     }
     await DB.setMeta('dsipFasting', new Date().toISOString());
   }
+  // Cagrilintide: log the 27 Oct dose and add the Monday schedule, once. Each is skipped if already there.
+  if (!(await DB.getMeta('cagMondays'))) {
+    const c = window.SEED_CAG;
+    const p = findPeptide(c.peptide);
+    if (p) {
+      if (p.bacWaterMl == null) {
+        const rec = await DB.put('peptides', { ...p, bacWaterMl: c.bacWaterMl });
+        state.peptides = state.peptides.map((x) => (x.id === rec.id ? rec : x));
+      }
+      const when = new Date(c.taken);
+      if (!state.entries.some((e) => e.peptideId === p.id && dayKey(e.takenAt) === dayKey(when.toISOString()))) {
+        state.entries.push(await DB.put('entries', {
+          peptideId: p.id, peptideName: p.name, dose: c.dose, doseUnit: c.doseUnit, volume: c.volume, volumeUnit: c.volumeUnit,
+          takenAt: when.toISOString(), site: '', notes: '', status: 'taken', vialId: null, scheduleId: null
+        }));
+      }
+      if (!state.schedules.some((s) => s.items.some((it) => it.peptideId === p.id))) {
+        const s = c.schedule;
+        state.schedules.push(await DB.put('schedules', {
+          name: s.name, rule: s.rule, every: s.every, blockDays: 1, startDate: s.startDate, active: true,
+          items: [{ peptideId: p.id, time: s.time, dose: c.dose, doseUnit: c.doseUnit, volume: c.volume, volumeUnit: c.volumeUnit }]
+        }));
+      }
+    }
+    await DB.setMeta('cagMondays', new Date().toISOString());
+  }
 }
