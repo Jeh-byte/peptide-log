@@ -79,9 +79,9 @@ function renderChecklist() {
   $('checklist').innerHTML = due.map((d, n) => {
     const head = size[stackKey(d)] > 1 && (n === 0 || stackKey(due[n - 1]) !== stackKey(d)) ? stackHeader(due, d) : '';
     const name = pepName(d.it.peptideId);
-    const what = itemText(withDraw(d.it));
     const done = !!d.entry;
     const empty = state.peptides.find((p) => p.id === d.it.peptideId)?.kind === 'oral' ? 'Tap to tick off' : 'Tap to enter the dose';
+    const what = [itemText(withDraw(d.it)), d.it.note].filter(Boolean).join(' · ');
     const when = done ? `taken ${timeStr(d.entry.takenAt)}` : fmtTime(d.it.time);
     const label = `${name}${what ? ` ${what}` : ''}, ${done ? `taken at ${timeStr(d.entry.takenAt)}. Tap to edit` : `due ${fmtTime(d.it.time)}. Tap to log it`}`;
     return `${head}<button type="button" class="check-row${done ? ' done' : ''}" data-n="${n}" aria-label="${esc(label)}">
@@ -106,7 +106,7 @@ async function logDue(d, pep, when) {
     peptideId: pep.id, peptideName: pep.name,
     dose: it.dose ?? null, doseUnit: it.doseUnit || 'mcg',
     volume: it.volume ?? null, volumeUnit: it.volumeUnit || 'units',
-    takenAt: when.toISOString(), site: oral ? 'Oral' : '', notes: '', status: 'taken', vialId: null, scheduleId: d.s.id
+    takenAt: when.toISOString(), site: oral ? 'Oral' : '', notes: d.it.note || '', status: 'taken', vialId: null, scheduleId: d.s.id
   });
   state.entries.push(rec);
   return rec;
@@ -186,7 +186,7 @@ function renderSchedules() {
     <button class="card${s.active ? '' : ' archived'}" data-id="${esc(s.id)}">
       <div class="line1"><span>${esc(s.name)}</span>${s.active ? '' : '<span class="time">paused</span>'}</div>
       <div class="line2">${esc(ruleText(s))}</div>
-      <div class="note">${esc(s.items.map((it) => `${pepName(it.peptideId)}${itemText(it) ? ` ${itemText(it)}` : ''}`).join(s.rule === 'rotate' ? ' ↔ ' : ', '))}</div>
+      <div class="note">${esc(s.items.map((it) => `${pepName(it.peptideId)}${itemText(it) ? ` ${itemText(it)}` : ''}${it.note ? ` (${it.note})` : ''}`).join(s.rule === 'rotate' ? ' ↔ ' : ', '))}</div>
     </button>`).join('') || '<p class="subtle-p">No schedules yet.</p>';
   $('remindersOn').checked = !!state.reminders;
   $('remindersNote').textContent = NATIVE
@@ -214,6 +214,7 @@ function itemRow(it = {}) {
       <label class="field grow"><span>Draw (optional)</span><input class="i-vol" type="number" inputmode="decimal" step="any" min="0" value="${esc(fmtNum(it.volume))}"></label>
       <label class="field unit"><span>&nbsp;</span><select class="i-vunit" aria-label="Draw unit">${unitOpts(['units', 'mL'], it.volumeUnit || 'units')}</select></label>
     </div>
+    <label class="field"><span>Note (optional)</span><input class="i-note" type="text" placeholder="e.g. fasting" value="${esc(it.note || '')}" autocomplete="off"></label>
     <button type="button" class="btn ghost small i-del">Remove</button>
   </div>`;
 }
@@ -255,7 +256,8 @@ function readSchedule() {
     peptideId: row.querySelector('.i-pep').value,
     time: row.querySelector('.i-time').value || '08:00',
     dose: num(row.querySelector('.i-dose').value), doseUnit: row.querySelector('.i-dunit').value,
-    volume: num(row.querySelector('.i-vol').value), volumeUnit: row.querySelector('.i-vunit').value
+    volume: num(row.querySelector('.i-vol').value), volumeUnit: row.querySelector('.i-vunit').value,
+    note: row.querySelector('.i-note').value.trim()
   })).filter((it) => it.peptideId);
   return {
     ...(schEditing || {}),
@@ -374,7 +376,7 @@ async function doSync() {
         list.push({
           id: Math.round((keyDate(k).getTime() - base) / 864e5) * 10000 + h * 100 + m,
           title: `Dose due: ${its.map((it) => pepName(it.peptideId)).join(', ')}`,
-          body: `${its.map((it) => `${pepName(it.peptideId)}${itemText(it) ? ` ${itemText(it)}` : ''}`).join(' · ')}. Open the app to tick it off.`,
+          body: `${its.map((it) => `${pepName(it.peptideId)}${itemText(it) ? ` ${itemText(it)}` : ''}${it.note ? ` (${it.note})` : ''}`).join(' · ')}. Open the app to tick it off.`,
           schedule: { at, allowWhileIdle: true },
           smallIcon: 'ic_stat_dose'
         });
@@ -586,5 +588,15 @@ async function seedSetup() {
       }));
     }
     await DB.setMeta('dsipNightly', new Date().toISOString());
+  }
+  // DSIP is taken fasting; note it on every DSIP schedule item once, unless it already has a note.
+  if (!(await DB.getMeta('dsipFasting'))) {
+    const p = findPeptide(window.SEED_DSIP.peptide);
+    for (const s of p ? state.schedules : []) {
+      if (!s.items.some((it) => it.peptideId === p.id && !it.note)) continue;
+      const rec = await DB.put('schedules', { ...s, items: s.items.map((it) => (it.peptideId === p.id && !it.note ? { ...it, note: window.SEED_DSIP.note } : it)) });
+      state.schedules = state.schedules.map((x) => (x.id === rec.id ? rec : x));
+    }
+    await DB.setMeta('dsipFasting', new Date().toISOString());
   }
 }

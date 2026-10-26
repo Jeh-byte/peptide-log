@@ -58,8 +58,9 @@ window.SEED_GLOW = { from: 'Every night', name: 'Glow stack' };
 window.SEED_ZINC = { name: 'Zinc + vitamin D', time: '08:00', schedule: 'Zinc + vitamin D with breakfast', notes: 'With breakfast.' };
 window.SEED_RETIRE = ['MOTS-c'];
 // DSIP: 5 units every night from Jeh (26 Oct 2026); 250 mcg at 10 mg in 2 mL. Its own schedule, not
-// part of the Glow stack. Added once unless DSIP is already scheduled.
-window.SEED_DSIP = { name: 'DSIP at night', peptide: 'DSIP', dose: 250, doseUnit: 'mcg', volume: 5, volumeUnit: 'units', time: '21:00' };
+// part of the Glow stack. Added once unless DSIP is already scheduled. Taken fasting (Jeh, 26 Oct 2026):
+// the note shows on Today and goes into the logged dose's notes.
+window.SEED_DSIP = { name: 'DSIP at night', peptide: 'DSIP', dose: 250, doseUnit: 'mcg', volume: 5, volumeUnit: 'units', time: '21:00', note: 'Fasting' };
 window.SEED_SCHEDULES = [
   { name: 'Semax / Selank', rule: 'rotate', blockDays: 28, startDate: '2026-10-16', items: [
     { peptide: 'Selank', dose: 500, doseUnit: 'mcg', volume: 10, volumeUnit: 'units', time: '08:00' },
