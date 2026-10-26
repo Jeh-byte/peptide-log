@@ -575,4 +575,16 @@ async function seedSetup() {
     }
     await DB.setMeta('glowZincMots', new Date().toISOString());
   }
+  // DSIP every night on its own schedule. Applied once, unless DSIP is already on a schedule.
+  if (!(await DB.getMeta('dsipNightly'))) {
+    const d = window.SEED_DSIP;
+    const p = d && findPeptide(d.peptide);
+    if (p && !state.schedules.some((s) => s.items.some((it) => it.peptideId === p.id))) {
+      state.schedules.push(await DB.put('schedules', {
+        name: d.name, rule: 'daily', every: 1, blockDays: 1, startDate: todayKey(), active: true,
+        items: [{ peptideId: p.id, time: d.time, dose: d.dose, doseUnit: d.doseUnit, volume: d.volume, volumeUnit: d.volumeUnit }]
+      }));
+    }
+    await DB.setMeta('dsipNightly', new Date().toISOString());
+  }
 }
