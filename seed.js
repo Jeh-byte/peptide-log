@@ -68,6 +68,16 @@ window.SEED_CAG = {
   dose: 0.25, doseUnit: 'mg', volume: 10, volumeUnit: 'units',
   taken: '2026-10-27T10:00'
 };
+// Reta and Cag take turns from Jeh (29 Oct 2026): one dose every 4 days, swapping each time. Reta
+// 29 Oct, Cag 2 Nov, Reta 6 Nov, Cag 10 Nov, and so on, so each is every 8 days with Cag 4 days after Reta.
+// Applied once: their existing schedules are moved onto these dates, keeping their doses and times.
+window.SEED_RETA_CAG = {
+  every: 8,
+  items: [
+    { peptide: 'Retatrutide', name: 'Retatrutide', startDate: '2026-10-29' },
+    { peptide: 'Cagrilintide', name: 'Cagrilintide', startDate: '2026-11-02' }
+  ]
+};
 window.SEED_DSIP ={ name: 'DSIP at night', peptide: 'DSIP', dose: 250, doseUnit: 'mcg', volume: 5, volumeUnit: 'units', time: '21:00', note: 'Fasting' };
 window.SEED_SCHEDULES = [
   { name: 'Semax / Selank', rule: 'rotate', blockDays: 28, startDate: '2026-10-16', items: [

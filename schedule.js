@@ -625,4 +625,26 @@ async function seedSetup() {
     }
     await DB.setMeta('cagMondays', new Date().toISOString());
   }
+  // Reta and Cag take turns every 4 days. Moves each one's own schedule (any Reta vial counts), or adds one.
+  if (!(await DB.getMeta('retaCagSwap'))) {
+    const c = window.SEED_RETA_CAG;
+    for (const t of c.items) {
+      const n = normName(t.peptide);
+      const isIt = (it) => normName(pepName(it.peptideId)).startsWith(n);
+      const own = state.schedules.filter((s) => s.items.length && s.items.every(isIt));
+      for (const s of own) {
+        const rec = await DB.put('schedules', { ...s, name: t.name, rule: 'every', every: c.every, startDate: t.startDate, active: true });
+        state.schedules = state.schedules.map((x) => (x.id === rec.id ? rec : x));
+      }
+      const p = findPeptide(t.peptide);
+      if (!own.length && p) {
+        const last = lastEntryFor(p.id);
+        state.schedules.push(await DB.put('schedules', {
+          name: t.name, rule: 'every', every: c.every, blockDays: 1, startDate: t.startDate, active: true,
+          items: [{ peptideId: p.id, time: '10:00', dose: last?.dose ?? null, doseUnit: last?.doseUnit || 'mg', volume: last?.volume ?? null, volumeUnit: last?.volumeUnit || 'units' }]
+        }));
+      }
+    }
+    await DB.setMeta('retaCagSwap', new Date().toISOString());
+  }
 }
