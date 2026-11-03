@@ -647,4 +647,21 @@ async function seedSetup() {
     }
     await DB.setMeta('retaCagSwap2', new Date().toISOString());
   }
+  // CJC-1295 + Ipamorelin every night with a 12-week cycle on each. Applied once, unless either is already scheduled.
+  if (!(await DB.getMeta('cjcIpaNightly'))) {
+    const c = window.SEED_CJC_IPA;
+    const found = c.items.map((it) => ({ it, p: findPeptide(it.peptide) })).filter(({ p }) => p);
+    for (const { p } of found) {
+      if (p.cycleOnWeeks) continue;
+      const rec = await DB.put('peptides', { ...p, cycleOnWeeks: c.cycleOnWeeks, cycleOffWeeks: null, cycleStart: c.cycleStart, bacWaterMl: p.bacWaterMl ?? 2 });
+      state.peptides = state.peptides.map((x) => (x.id === rec.id ? rec : x));
+    }
+    if (found.length && !found.some(({ p }) => state.schedules.some((s) => s.items.some((x) => x.peptideId === p.id)))) {
+      state.schedules.push(await DB.put('schedules', {
+        name: c.name, rule: 'daily', every: 1, blockDays: 1, startDate: c.cycleStart, active: true,
+        items: found.map(({ it, p }) => ({ peptideId: p.id, time: c.time, dose: it.dose, doseUnit: it.doseUnit, volume: it.volume, volumeUnit: it.volumeUnit, note: c.note }))
+      }));
+    }
+    await DB.setMeta('cjcIpaNightly', new Date().toISOString());
+  }
 }

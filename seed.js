@@ -78,6 +78,16 @@ window.SEED_RETA_CAG = {
     { peptide: 'Cagrilintide', name: 'Cagrilintide', startDate: '2026-11-03' }
   ]
 };
+// CJC-1295 + Ipamorelin from Jeh (3 Nov 2026): every night at 21:00, fasting, on a 12-week cycle from
+// today. CJC-1295 100 mcg (2 units), Ipamorelin 150 mcg (3 units), both at 10 mg in 2 mL. The cycle is set
+// on each peptide, so the doses stop showing once it ends. Added once unless either is already scheduled.
+window.SEED_CJC_IPA = {
+  name: 'CJC-1295 + Ipamorelin', time: '21:00', note: 'Fasting', cycleOnWeeks: 12, cycleStart: '2026-11-03',
+  items: [
+    { peptide: 'CJC-1295', dose: 100, doseUnit: 'mcg', volume: 2, volumeUnit: 'units' },
+    { peptide: 'Ipamorelin', dose: 150, doseUnit: 'mcg', volume: 3, volumeUnit: 'units' }
+  ]
+};
 window.SEED_DSIP ={ name: 'DSIP at night', peptide: 'DSIP', dose: 250, doseUnit: 'mcg', volume: 5, volumeUnit: 'units', time: '21:00', note: 'Fasting' };
 window.SEED_SCHEDULES = [
   { name: 'Semax / Selank', rule: 'rotate', blockDays: 28, startDate: '2026-10-16', items: [
