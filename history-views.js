@@ -92,7 +92,7 @@ function renderCalDetail() {
   $('calDetail').innerHTML = `
     <div class="day-h">${esc(dayLabel(k))}</div>
     ${doses.map((e) => `<button type="button" class="card compact" data-id="${esc(e.id)}">
-      <div class="line1"><span>${esc(names[e.peptideId] || e.peptideName)}</span><span class="time">${esc(timeStr(e.takenAt))}</span></div>
+      <div class="line1"><span>${capDot(names[e.peptideId] || e.peptideName)}${esc(names[e.peptideId] || e.peptideName)}</span><span class="time">${esc(timeStr(e.takenAt))}</span></div>
       <div class="line2">${esc(entrySummary(e))}</div></button>`).join('') || '<p class="subtle-p">No doses on this day.</p>'}
     <div class="cal-feel">${body || '<p class="subtle-p">Nothing recorded under How I feel.</p>'}</div>
     ${k <= todayKey() ? `<button type="button" class="btn ghost small" id="calEditFeel">${c ? 'Edit' : 'Add'} how I felt</button>` : ''}`;

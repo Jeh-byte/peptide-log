@@ -148,6 +148,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   display: block; cursor: pointer;
 }
 .card .line1 { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
+.cap-dot { display: inline-block; width: .8em; height: .8em; border-radius: 50%; margin-right: .45em; vertical-align: -.05em; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
 .card .line1 .time { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; flex: none; }
 .card .line2 { color: var(--muted); font-size: 14px; margin-top: 2px; }
 .card .note { font-size: 14px; margin-top: 6px; white-space: pre-wrap; }

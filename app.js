@@ -7,6 +7,11 @@ const CapApp = NATIVE ? window.Capacitor.registerPlugin('App') : null;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Coloured dot matching the peptide's printed vial cap (colours come from cap-colours.js, written by Peptide Cap Maker).
+const capDot = (name) => {
+  const c = (window.CAP_COLOURS || {})[String(name || '').toLowerCase()];
+  return c && /^#[0-9a-f]{6}$/i.test(c) ? `<i class="cap-dot" style="background:${c}" title="Cap colour"></i>` : '';
+};
 const num = (v) => (v === '' || v == null || isNaN(+v) ? null : +v);
 const fmtNum = (n) => (n == null ? '' : String(+(+n).toFixed(4)));
 
@@ -302,7 +307,7 @@ function renderHistoryList() {
     const k = dayKey(e.takenAt);
     if (k !== day) { day = k; html += `<div class="day-h">${esc(dayLabel(k))}</div>`; }
     html += `<button class="card" data-id="${esc(e.id)}">
-      <div class="line1"><span>${esc(names[e.peptideId] || e.peptideName)}</span><span class="time">${esc(timeStr(e.takenAt))}</span></div>
+      <div class="line1"><span>${capDot(names[e.peptideId] || e.peptideName)}${esc(names[e.peptideId] || e.peptideName)}</span><span class="time">${esc(timeStr(e.takenAt))}</span></div>
       <div class="line2">${esc(entrySummary(e))}</div>
       ${e.notes ? `<div class="note">${esc(e.notes)}</div>` : ''}
     </button>`;
@@ -324,7 +329,7 @@ function renderPeptides() {
     const v = activeVial(p.id), s = v && vialStatus(v);
     const mix = mixFor(p.id), cyc = cycleText(p);
     return `<button class="card${p.archived ? ' archived' : ''}" data-id="${esc(p.id)}">
-      <div class="line1"><span>${esc(p.name)}</span>${p.archived ? '<span class="time">archived</span>' : cyc ? `<span class="cycle-tag${cycleAt(p, todayKey())?.on ? ' on' : ''}">${esc(cyc.split(' · ')[0].split(',')[0])}</span>` : ''}</div>
+      <div class="line1"><span>${capDot(p.name)}${esc(p.name)}</span>${p.archived ? '<span class="time">archived</span>' : cyc ? `<span class="cycle-tag${cycleAt(p, todayKey())?.on ? ' on' : ''}">${esc(cyc.split(' · ')[0].split(',')[0])}</span>` : ''}</div>
       <div class="line2">${esc(meta)}</div>
       ${mix ? `<div class="line2">${esc(strengthText(mix))}</div>` : ''}
       ${cyc ? `<div class="line2">${esc(cyc)}</div>` : ''}
