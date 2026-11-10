@@ -62,31 +62,34 @@ function nextDue(s, from = todayKey(), item = null) {
 // ---------- Today checklist ----------
 // A schedule with 2+ doses due at the same time is a stack: it gets a header with "Log all".
 const stackKey = (d) => `${d.s.id}|${d.it.time}`;
-function stackHeader(due, d) {
+function stackHeader(due, d, future = false) {
   const all = due.filter((x) => stackKey(x) === stackKey(d));
   const left = all.filter((x) => !x.entry).length;
+  const right = future ? `<span class="stack-due">${all.length} due</span>`
+    : left ? `<button type="button" class="btn ghost small" data-stack="${esc(stackKey(d))}">Log all ${left}</button>` : '<span class="stack-done">All taken</span>';
   return `<div class="stack-h">
     <span><strong>${esc(d.s.name)}</strong> · ${esc(fmtTime(d.it.time))}</span>
-    ${left ? `<button type="button" class="btn ghost small" data-stack="${esc(stackKey(d))}">Log all ${left}</button>` : '<span class="stack-done">All taken</span>'}
+    ${right}
   </div>`;
 }
 function renderChecklist() {
   const k = feelDay();
+  const future = k > todayKey();
   const due = dueOn(k);
   const size = {};
   for (const d of due) size[stackKey(d)] = (size[stackKey(d)] || 0) + 1;
   $('checkWrap').hidden = !due.length;
   $('checklist').innerHTML = due.map((d, n) => {
-    const head = size[stackKey(d)] > 1 && (n === 0 || stackKey(due[n - 1]) !== stackKey(d)) ? stackHeader(due, d) : '';
+    const head = size[stackKey(d)] > 1 && (n === 0 || stackKey(due[n - 1]) !== stackKey(d)) ? stackHeader(due, d, future) : '';
     const name = pepName(d.it.peptideId);
     const done = !!d.entry;
     const empty = state.peptides.find((p) => p.id === d.it.peptideId)?.kind === 'oral' ? 'Tap to tick off' : 'Tap to enter the dose';
     const what = [itemText(withDraw(d.it)), d.it.note].filter(Boolean).join(' · ');
     const when = done ? `taken ${timeStr(d.entry.takenAt)}` : fmtTime(d.it.time);
-    const label = `${name}${what ? ` ${what}` : ''}, ${done ? `taken at ${timeStr(d.entry.takenAt)}. Tap to edit` : `due ${fmtTime(d.it.time)}. Tap to log it`}`;
+    const label = `${name}${what ? ` ${what}` : ''}, ${done ? `taken at ${timeStr(d.entry.takenAt)}. Tap to edit` : future ? `due ${dayLabel(k)} at ${fmtTime(d.it.time)}` : `due ${fmtTime(d.it.time)}. Tap to log it`}`;
     return `${head}<button type="button" class="check-row${done ? ' done' : ''}" data-n="${n}" aria-label="${esc(label)}">
       <span class="box" aria-hidden="true">${done ? '✓' : ''}</span>
-      <span class="ck-main"><strong>${esc(name)}</strong>${what ? `<span>${esc(what)}</span>` : `<span>${empty}</span>`}</span>
+      <span class="ck-main"><strong>${capDot(name)}${esc(name)}</strong>${what ? `<span>${esc(what)}</span>` : `<span>${empty}</span>`}</span>
       <span class="ck-time">${esc(when)}</span>
     </button>`;
   }).join('');
@@ -142,6 +145,7 @@ $('checklist').addEventListener('click', async (e) => {
   if (!b) return;
   const d = $('checklist').due[+b.dataset.n];
   if (d.entry) { editEntry(d.entry.id); return; }
+  if (feelDay() > todayKey()) { toast(`${pepName(d.it.peptideId)} is due ${dayLabel(feelDay()).toLowerCase()}. Tick it off on the day.`); return; }
   const pep = state.peptides.find((p) => p.id === d.it.peptideId);
   if (!pep) { toast('That peptide no longer exists. Edit the schedule.'); return; }
   const when = dueWhen(d);

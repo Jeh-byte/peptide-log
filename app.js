@@ -27,10 +27,14 @@ function dayKey(iso) { const d = new Date(iso); return toLocalInput(d).slice(0, 
 function dayLabel(key) {
   const today = dayKey(new Date().toISOString());
   const y = new Date(); y.setDate(y.getDate() - 1);
+  const t = new Date(); t.setDate(t.getDate() + 1);
   if (key === today) return 'Today';
   if (key === dayKey(y.toISOString())) return 'Yesterday';
+  if (key === dayKey(t.toISOString())) return 'Tomorrow';
   const [Y, M, D] = key.split('-').map(Number);
-  return new Date(Y, M - 1, D).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const opts = { weekday: 'short', day: 'numeric', month: 'short' };
+  if (Y !== new Date().getFullYear()) opts.year = 'numeric';
+  return new Date(Y, M - 1, D).toLocaleDateString([], opts);
 }
 function ago(iso) {
   const mins = Math.round((Date.now() - new Date(iso)) / 60000);

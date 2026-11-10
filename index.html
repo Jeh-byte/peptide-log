@@ -30,13 +30,15 @@
           <h2 id="todayLabel">Today</h2>
           <button type="button" class="icon-btn nav-btn" id="dayNext" aria-label="Next day">›</button>
         </div>
+        <button type="button" class="btn ghost small day-back" id="dayToday" hidden>Back to today</button>
         <div id="checkWrap" hidden>
           <div id="checklist" class="checklist" role="group" aria-label="Scheduled doses"></div>
         </div>
+        <p class="next-line" id="todayNext" hidden></p>
         <h3 class="sub-h" id="otherHead">Logged</h3>
         <div id="todayDoses"></div>
 
-        <div class="feel-card">
+        <div class="feel-card" id="feelCard">
           <h3>How I feel</h3>
           <div id="feelFaces"></div>
           <div class="field">

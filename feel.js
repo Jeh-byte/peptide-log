@@ -41,11 +41,23 @@ function flushFeel() {
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) flushFeel(); });
 
+const MAX_AHEAD = 60;   // how far forward you can look at what's due
 function renderToday() {
   const k = feelDay();
+  const future = k > todayKey();
   $('todayLabel').textContent = dayLabel(k);
-  $('dayNext').disabled = k >= todayKey();
+  $('dayNext').disabled = k >= shiftDay(todayKey(), MAX_AHEAD);
+  $('dayToday').hidden = k === todayKey();
+  $('todaySec').classList.toggle('future', future);
+  $('feelCard').hidden = future;
   renderChecklist();
+  renderNextLine(k);
+  if (future) {
+    $('otherHead').hidden = true;
+    $('todayDoses').innerHTML = $('checkWrap').hidden ? '<p class="subtle-p">Nothing scheduled on this day.</p>' : '';
+    return;
+  }
+  $('otherHead').hidden = false;
   const names = Object.fromEntries(state.peptides.map((p) => [p.id, p.name]));
   const ticked = new Set(($('checklist').due || []).map((d) => d.entry?.id).filter(Boolean));
   const doses = state.entries.filter((e) => dayKey(e.takenAt) === k && !ticked.has(e.id)).sort((a, b) => a.takenAt.localeCompare(b.takenAt));
@@ -58,13 +70,48 @@ function renderToday() {
   renderFeel();
 }
 $('todayDoses').addEventListener('click', (e) => { const c = e.target.closest('.card'); if (c) editEntry(c.dataset.id); });
-$('dayPrev').addEventListener('click', () => { flushFeel(); state.feelDay = shiftDay(feelDay(), -1); renderToday(); });
-$('dayNext').addEventListener('click', () => {
+// "Next: Retatrutide tomorrow 8:00 am · ..." under today's list
+function renderNextLine(k) {
+  const el = $('todayNext');
+  if (k !== todayKey()) { el.hidden = true; return; }
+  const up = [];
+  for (let i = 1; i <= 3 && up.length < 4; i++) {
+    const day = shiftDay(k, i);
+    for (const d of dueOn(day)) if (up.length < 4) up.push({ day, d });
+  }
+  el.hidden = !up.length;
+  el.innerHTML = up.length ? 'Next: ' + up.map(({ day, d }) => {
+    const when = day === shiftDay(k, 1) ? 'tomorrow' : dayLabel(day).split(',')[0];
+    return `<strong>${capDot(pepName(d.it.peptideId))}${esc(pepName(d.it.peptideId))}</strong> ${esc(when)} ${esc(fmtTime(d.it.time))}`;
+  }).join(' · ') : '';
+}
+function goDay(n) {
+  const next = shiftDay(feelDay(), n);
+  if (n > 0 && next > shiftDay(todayKey(), MAX_AHEAD)) return;
   flushFeel();
-  const next = shiftDay(feelDay(), 1);
-  state.feelDay = next >= todayKey() ? null : next;
+  state.feelDay = next === todayKey() ? null : next;
+  const sec = $('todaySec');
+  sec.classList.remove('slide-l', 'slide-r');
+  void sec.offsetWidth;                // restart the little slide animation
+  sec.classList.add(n > 0 ? 'slide-l' : 'slide-r');
   renderToday();
-});
+}
+$('dayPrev').addEventListener('click', () => goDay(-1));
+$('dayNext').addEventListener('click', () => goDay(1));
+$('dayToday').addEventListener('click', () => { flushFeel(); state.feelDay = null; renderToday(); });
+// Swipe left for the next day, right for the day before. Sliders and text boxes keep their own swipes.
+let swipe = null;
+$('todaySec').addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1 || e.target.closest('input, textarea, select, .feel-card')) { swipe = null; return; }
+  swipe = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+}, { passive: true });
+$('todaySec').addEventListener('touchend', (e) => {
+  if (!swipe) return;
+  const dx = e.changedTouches[0].clientX - swipe.x, dy = e.changedTouches[0].clientY - swipe.y;
+  const quick = Date.now() - swipe.t < 700;
+  swipe = null;
+  if (quick && Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) goDay(dx < 0 ? 1 : -1);
+}, { passive: true });
 
 function renderFeel() {
   flushFeel(); // a typed-but-unsaved value must reach state before the inputs are redrawn

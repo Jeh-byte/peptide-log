@@ -228,6 +228,16 @@ dialog p { margin: 0 0 10px; }
 .today-h h2 { font-size: 18px; margin: 0; text-align: center; flex: 1; }
 .nav-btn { font-size: 26px; line-height: 1; width: 46px; height: 46px; padding: 0; margin: 0; color: var(--text); }
 .nav-btn:disabled { opacity: .3; }
+.day-back { display: block; margin: -4px auto 10px; }
+.next-line { margin: 8px 2px 0; font-size: 14px; color: var(--muted); }
+.next-line strong { color: var(--text); font-weight: 600; }
+.today.future .check-row { cursor: default; }
+.today.future .check-row .box { border-style: dashed; }
+.stack-due { font-size: 13px; color: var(--muted); }
+@keyframes dayInL { from { opacity: .3; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes dayInR { from { opacity: .3; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+.today.slide-l { animation: dayInL .18s ease-out; }
+.today.slide-r { animation: dayInR .18s ease-out; }
 .card.compact { padding: 10px 12px; }
 .feel-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-top: 12px; }
 .feel-card h3 { margin: 0 0 10px; font-size: 16px; }
