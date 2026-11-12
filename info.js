@@ -9,6 +9,7 @@ function libFor(name) {
   for (const e of window.LIBRARY) for (const a of e.aliases) if (n.startsWith(a) && a.length > len) { best = e; len = a.length; }
   return best;
 }
+const priceLine = (name) => { const p = window.priceFor ? window.priceFor(name) : ''; return p ? `<p><strong>Price guide:</strong> ${esc(p)}<br><span class="subtle-p">${esc(window.PRICE_NOTE)}</span></p>` : ''; };
 const statusBadge = (e) => `<span class="badge s-${e.status}">${esc(window.LIB_STATUS[e.status])}</span>`;
 
 function setInfoMode(mode) {
@@ -58,7 +59,8 @@ function renderMine() {
       ${lib ? `<h4>Background</h4>
         <p><strong>Status:</strong> ${esc(lib.statusText)}</p>
         <p><strong>How it’s usually taken:</strong> ${esc(lib.taken)}</p>
-        <p><strong>What to watch for:</strong> ${esc(lib.watch)}</p>` : ''}
+        <p><strong>What to watch for:</strong> ${esc(lib.watch)}</p>
+        ${priceLine(lib.name)}` : ''}
       <div class="actions">
         <button type="button" class="btn ghost small" data-edit="${esc(p.id)}">Edit</button>
         <button type="button" class="btn ghost small" data-calc="${esc(p.id)}">Calculator</button>
@@ -89,6 +91,7 @@ function renderLibrary() {
       <p><strong>Status:</strong> ${esc(e.statusText)}</p>
       <p><strong>How it’s usually taken:</strong> ${esc(e.taken)}</p>
       <p><strong>What to watch for:</strong> ${esc(e.watch)}</p>
+      ${priceLine(e.name)}
       ${mine.has(e.name) ? '<p class="in-mine">✓ In my peptides</p>' : `<button type="button" class="btn ghost small" data-add="${esc(e.name)}">Add to my peptides</button>`}
     </details>`;
   }
